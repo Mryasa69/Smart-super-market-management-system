@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Search, Star, Gift, TrendingUp, Mail, Phone } from 'lucide-react';
 
 interface CustomerManagementProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
+  userRole: 'admin' | 'cashier' | 'stock_manager' | 'customer' | null;
   onLogout: () => void;
 }
 
@@ -84,6 +84,61 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const tiers = ['all', 'Bronze', 'Silver', 'Gold', 'Platinum'];
+
+  // Fetch customers from backend when component mounts
+  useEffect(() => {
+    console.log('=== LOADING CUSTOMERS ===');
+    
+    // Load customers from localStorage first
+    const localCustomers = localStorage.getItem('customers');
+    console.log('Raw localStorage customers data:', localCustomers);
+    
+    if (localCustomers) {
+      try {
+        const parsed = JSON.parse(localCustomers);
+        console.log('Loaded customers from localStorage:', parsed);
+        console.log('Number of customers from localStorage:', parsed.length);
+        setCustomers(parsed);
+      } catch (e) {
+        console.error('Failed to parse localStorage customers:', e);
+      }
+    } else {
+      console.log('No customers in localStorage, using initial data');
+    }
+    
+    // Try to fetch from backend
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      console.log('Fetching customers from backend...');
+      fetch('http://localhost:5000/api/customers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(response => {
+        if (response.ok) return response.json();
+        throw new Error('Backend failed');
+      })
+      .then(data => {
+        console.log('Backend customers data:', data);
+        if (data.success && data.data) {
+          const transformed = data.data.map((customer: any) => ({
+            id: customer.id || Math.random(),
+            name: customer.name || `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'Unknown',
+            email: customer.email || '',
+            phone: customer.phone || '',
+            loyaltyPoints: customer.loyaltyPoints || 0,
+            totalPurchases: customer.totalPurchases || 0,
+            lastPurchase: customer.lastPurchase || new Date().toISOString().split('T')[0],
+            tier: customer.tier || 'Bronze',
+            joinDate: customer.joinDate || customer.createdAt || new Date().toISOString().split('T')[0],
+          }));
+          console.log('Transformed customers from backend:', transformed);
+          setCustomers(transformed);
+          localStorage.setItem('customers', JSON.stringify(transformed));
+        }
+      })
+      .catch(e => console.log('Backend fetch failed:', e));
+    }
+  }, []);
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

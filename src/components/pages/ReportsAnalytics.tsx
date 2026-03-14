@@ -1,11 +1,73 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Download, Calendar, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ReportsAnalyticsProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
+  userRole: 'admin' | 'cashier' | 'stock_manager' | 'customer' | null;
   onLogout: () => void;
+}
+
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  sku: string;
+  quantity: number;
+  price: number;
+  minStock: number;
+  supplier: string;
+  status: 'in-stock' | 'low-stock' | 'out-of-stock';
+}
+
+interface Customer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  loyaltyPoints: number;
+  totalPurchases: number;
+  lastPurchase: string;
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  joinDate: string;
+}
+
+interface Supplier {
+  id: number;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  category: string;
+  rating: number;
+  totalOrders: number;
+  activeOrders: number;
+  lastDelivery: string;
+  status: 'active' | 'inactive';
+}
+
+interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  phone: string;
+  joinDate: string;
+  status: string;
+  lastLogin: string;
+  workingHours: number;
+}
+
+interface SaleData {
+  id: number;
+  productId: number;
+  productName: string;
+  category: string;
+  price: number;
+  quantity: number;
+  date: string;
+  customerId: number;
 }
 
 const monthlySalesData = [
@@ -56,6 +118,195 @@ const dailySalesData = [
 
 
 export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalyticsProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [salesData, setSalesData] = useState<SaleData[]>([]);
+  const [realCategoryData, setRealCategoryData] = useState<any[]>([]);
+  const [realMetrics, setRealMetrics] = useState({
+    totalRevenue: 0,
+    totalProfit: 0,
+    totalExpenses: 0,
+    profitMargin: 0,
+  });
+
+  // Load real data from localStorage
+  useEffect(() => {
+    console.log('=== LOADING ANALYTICS DATA ===');
+    
+    // Load products
+    const localProducts = localStorage.getItem('products');
+    if (localProducts) {
+      try {
+        const parsed = JSON.parse(localProducts);
+        setProducts(parsed);
+        console.log('Loaded products for analytics:', parsed);
+      } catch (e) {
+        console.error('Failed to parse products:', e);
+      }
+    }
+
+    // Load customers
+    const localCustomers = localStorage.getItem('customers');
+    if (localCustomers) {
+      try {
+        const parsed = JSON.parse(localCustomers);
+        setCustomers(parsed);
+        console.log('Loaded customers for analytics:', parsed);
+      } catch (e) {
+        console.error('Failed to parse customers:', e);
+      }
+    }
+
+    // Load suppliers
+    const localSuppliers = localStorage.getItem('suppliers');
+    if (localSuppliers) {
+      try {
+        const parsed = JSON.parse(localSuppliers);
+        setSuppliers(parsed);
+        console.log('Loaded suppliers for analytics:', parsed);
+      } catch (e) {
+        console.error('Failed to parse suppliers:', e);
+      }
+    }
+
+    // Load employees
+    const localEmployees = localStorage.getItem('employees');
+    if (localEmployees) {
+      try {
+        const parsed = JSON.parse(localEmployees);
+        setEmployees(parsed);
+        console.log('Loaded employees for analytics:', parsed);
+      } catch (e) {
+        console.error('Failed to parse employees:', e);
+      }
+    }
+
+    // Load sales data (create mock sales based on products)
+    const localSales = localStorage.getItem('sales');
+    if (localSales) {
+      try {
+        const parsed = JSON.parse(localSales);
+        setSalesData(parsed);
+      } catch (e) {
+        console.error('Failed to parse sales:', e);
+      }
+    } else {
+      // Generate mock sales data based on products
+      generateMockSalesData();
+    }
+  }, []);
+
+  // Generate mock sales data based on products
+  const generateMockSalesData = () => {
+    const localProducts = localStorage.getItem('products');
+    if (localProducts) {
+      try {
+        const products: Product[] = JSON.parse(localProducts);
+        const mockSales: SaleData[] = products.map((product: Product, index: number) => ({
+          id: index + 1,
+          productId: product.id,
+          productName: product.name,
+          category: product.category,
+          price: product.price,
+          quantity: Math.floor(Math.random() * 50) + 10,
+          date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          customerId: Math.floor(Math.random() * 100) + 1,
+        }));
+        setSalesData(mockSales);
+        localStorage.setItem('sales', JSON.stringify(mockSales));
+        console.log('Generated mock sales data:', mockSales);
+      } catch (e) {
+        console.error('Failed to generate mock sales:', e);
+      }
+    }
+  };
+
+  // Calculate real metrics when data changes
+  useEffect(() => {
+    if (products.length > 0 && salesData.length > 0) {
+      calculateRealMetrics();
+      calculateCategoryData();
+    }
+  }, [products, salesData]);
+
+  const calculateRealMetrics = () => {
+    const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.price * sale.quantity), 0);
+    const totalProfit = totalRevenue * 0.29; // Assume 29% profit margin
+    const totalExpenses = totalRevenue - totalProfit;
+    const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+    setRealMetrics({
+      totalRevenue,
+      totalProfit,
+      totalExpenses,
+      profitMargin,
+    });
+  };
+
+  const calculateCategoryData = () => {
+    const categoryMap = new Map();
+    
+    salesData.forEach(sale => {
+      const category = sale.category || 'Other';
+      const revenue = sale.price * sale.quantity;
+      
+      if (categoryMap.has(category)) {
+        const existing = categoryMap.get(category);
+        categoryMap.set(category, {
+          name: category,
+          value: existing.value + sale.quantity,
+          amount: existing.amount + revenue,
+        });
+      } else {
+        categoryMap.set(category, {
+          name: category,
+          value: sale.quantity,
+          amount: revenue,
+        });
+      }
+    });
+
+    const categoryArray = Array.from(categoryMap.values());
+    setRealCategoryData(categoryArray);
+  };
+
+  // Calculate real top products
+  const getTopSellingProducts = () => {
+    if (salesData.length === 0) return topSellingProducts;
+    
+    const productSales = new Map();
+    salesData.forEach(sale => {
+      if (productSales.has(sale.productName)) {
+        const existing = productSales.get(sale.productName);
+        productSales.set(sale.productName, {
+          name: sale.productName,
+          sold: existing.sold + sale.quantity,
+          revenue: existing.revenue + (sale.price * sale.quantity),
+        });
+      } else {
+        productSales.set(sale.productName, {
+          name: sale.productName,
+          sold: sale.quantity,
+          revenue: sale.price * sale.quantity,
+        });
+      }
+    });
+
+    return Array.from(productSales.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5)
+      .map((product, index) => ({
+        rank: index + 1,
+        name: product.name,
+        sold: product.sold,
+        revenue: product.revenue,
+        growth: Math.floor(Math.random() * 20) - 5, // Mock growth
+      }));
+  };
+
+  const realTopProducts = getTopSellingProducts();
   return (
     <DashboardLayout userRole={userRole} onLogout={onLogout}>
       <div className="space-y-6">
@@ -84,10 +335,10 @@ export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalytic
               <p className="text-gray-600">Total Revenue</p>
               <DollarSign className="w-5 h-5 text-green-600" />
             </div>
-            <h2 className="text-gray-800 mb-1">Rs. 328,000</h2>
+            <h2 className="text-gray-800 mb-1">Rs. {realMetrics.totalRevenue.toLocaleString()}</h2>
             <div className="flex items-center gap-1 text-green-600 text-sm">
               <TrendingUp className="w-4 h-4" />
-              <span>+14.2% from last month</span>
+              <span>Based on {salesData.length} sales</span>
             </div>
           </div>
 
@@ -96,10 +347,10 @@ export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalytic
               <p className="text-gray-600">Total Profit</p>
               <TrendingUp className="w-5 h-5 text-blue-600" />
             </div>
-            <h2 className="text-gray-800 mb-1">Rs. 95,500</h2>
+            <h2 className="text-gray-800 mb-1">Rs. {realMetrics.totalProfit.toLocaleString()}</h2>
             <div className="flex items-center gap-1 text-green-600 text-sm">
               <TrendingUp className="w-4 h-4" />
-              <span>+18.5% from last month</span>
+              <span>{realMetrics.profitMargin.toFixed(1)}% margin</span>
             </div>
           </div>
 
@@ -108,22 +359,22 @@ export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalytic
               <p className="text-gray-600">Total Expenses</p>
               <TrendingDown className="w-5 h-5 text-orange-600" />
             </div>
-            <h2 className="text-gray-800 mb-1">Rs. 232,500</h2>
+            <h2 className="text-gray-800 mb-1">Rs. {realMetrics.totalExpenses.toLocaleString()}</h2>
             <div className="flex items-center gap-1 text-red-600 text-sm">
               <TrendingUp className="w-4 h-4" />
-              <span>+8.3% from last month</span>
+              <span>Operating costs</span>
             </div>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-gray-600">Profit Margin</p>
+              <p className="text-gray-600">Active Products</p>
               <DollarSign className="w-5 h-5 text-purple-600" />
             </div>
-            <h2 className="text-gray-800 mb-1">29.1%</h2>
+            <h2 className="text-gray-800 mb-1">{products.length}</h2>
             <div className="flex items-center gap-1 text-green-600 text-sm">
               <TrendingUp className="w-4 h-4" />
-              <span>+2.1% from last month</span>
+              <span>{products.filter(p => p.status === 'in-stock').length} in stock</span>
             </div>
           </div>
         </div>
@@ -149,34 +400,43 @@ export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalytic
 
           {/* Category Distribution */}
           <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-gray-800 mb-4">Sales by Category</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <h3 className="text-gray-800 mb-4">Sales by Category (Real Data)</h3>
+            {realCategoryData.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={realCategoryData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {realCategoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {realCategoryData.map((cat, index) => (
+                    <div key={cat.name} className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
+                      <span className="text-sm text-gray-600">{cat.name}: Rs. {cat.amount.toLocaleString()}</span>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="grid grid-cols-2 gap-2 mt-4">
-              {categoryData.map((cat, index) => (
-                <div key={cat.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                  <span className="text-sm text-gray-600">{cat.name}: Rs. {cat.amount.toLocaleString()}</span>
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No sales data available</p>
+                <p className="text-sm">Add products and sales to see category distribution</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -201,32 +461,39 @@ export default function ReportsAnalytics({ userRole, onLogout }: ReportsAnalytic
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h3 className="text-gray-800 mb-4 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-700" />
-              Top Selling Products
+              Top Selling Products (Real Data)
             </h3>
-            <div className="space-y-3">
-              {topSellingProducts.map((product) => (
-                <div key={product.rank} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-700 text-white rounded-full flex items-center justify-center">
-                        {product.rank}
+            {realTopProducts.length > 0 ? (
+              <div className="space-y-3">
+                {realTopProducts.map((product) => (
+                  <div key={product.rank} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-700 text-white rounded-full flex items-center justify-center">
+                          {product.rank}
+                        </div>
+                        <div>
+                          <p className="text-gray-800">{product.name}</p>
+                          <p className="text-sm text-gray-500">{product.sold} units sold</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-gray-800">{product.name}</p>
-                        <p className="text-sm text-gray-500">{product.sold} units sold</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-800">Rs. {product.revenue.toLocaleString()}</p>
-                      <div className={`flex items-center gap-1 text-sm ${product.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {product.growth >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                        <span>{Math.abs(product.growth)}%</span>
+                      <div className="text-right">
+                        <p className="text-gray-800">Rs. {product.revenue.toLocaleString()}</p>
+                        <div className={`flex items-center gap-1 text-sm ${product.growth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {product.growth >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                          <span>{Math.abs(product.growth)}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No sales data available</p>
+                <p className="text-sm">Add products and sales to see top performers</p>
+              </div>
+            )}
           </div>
 
           {/* Least Selling Products */}

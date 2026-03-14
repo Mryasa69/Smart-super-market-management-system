@@ -14,8 +14,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -24,10 +25,42 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       return;
     }
 
-    // For demo purposes, automatically log in as admin
-    // In a real application, this would validate against a database
-    onLogin('admin');
-    navigate('/dashboard');
+    try {
+      setLoading(true);
+
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        setError(data.message || 'Invalid email or password');
+        return;
+      }
+
+      const { token, role } = data.data;
+
+      // Save auth info
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('userRole', role);
+
+      // Inform parent so role can be stored in state
+      onLogin(role);
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError('Unable to connect to the server. Please make sure the backend is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -115,9 +148,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {/* Log In Button */}
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors"
+              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              disabled={loading}
             >
-              Log In
+              {loading ? 'Logging in...' : 'Log In'}
             </button>
           </form>
 

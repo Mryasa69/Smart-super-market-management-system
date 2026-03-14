@@ -1,9 +1,11 @@
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Package, ShoppingCart, Users, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { useState, useEffect } from 'react';
+import ActivityTracker from '../../utils/activityTracker';
 
 interface AdminDashboardProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
+  userRole: 'admin' | 'cashier' | 'stock_manager' | 'customer' | null;
   onLogout: () => void;
 }
 
@@ -39,6 +41,87 @@ const recentActivities = [
 ];
 
 export default function AdminDashboard({ userRole, onLogout }: AdminDashboardProps) {
+  const [employees, setEmployees] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [realRecentActivities, setRealRecentActivities] = useState(recentActivities);
+  const activityTracker = ActivityTracker.getInstance();
+
+  // Load real data from localStorage and update activity time labels
+  useEffect(() => {
+    console.log('=== LOADING DASHBOARD DATA ===');
+    
+    // Update activity time labels
+    activityTracker.updateTimeLabels();
+    
+    // Load employees
+    const localEmployees = localStorage.getItem('employees');
+    if (localEmployees) {
+      try {
+        const parsed = JSON.parse(localEmployees);
+        setEmployees(parsed);
+        console.log('Loaded employees for dashboard:', parsed);
+      } catch (e) {
+        console.error('Failed to parse employees:', e);
+      }
+    }
+
+    // Load products
+    const localProducts = localStorage.getItem('products');
+    if (localProducts) {
+      try {
+        const parsed = JSON.parse(localProducts);
+        setProducts(parsed);
+        console.log('Loaded products for dashboard:', parsed);
+      } catch (e) {
+        console.error('Failed to parse products:', e);
+      }
+    }
+
+    // Load customers
+    const localCustomers = localStorage.getItem('customers');
+    if (localCustomers) {
+      try {
+        const parsed = JSON.parse(localCustomers);
+        setCustomers(parsed);
+        console.log('Loaded customers for dashboard:', parsed);
+      } catch (e) {
+        console.error('Failed to parse customers:', e);
+      }
+    }
+
+    // Load suppliers
+    const localSuppliers = localStorage.getItem('suppliers');
+    if (localSuppliers) {
+      try {
+        const parsed = JSON.parse(localSuppliers);
+        setSuppliers(parsed);
+        console.log('Loaded suppliers for dashboard:', parsed);
+      } catch (e) {
+        console.error('Failed to parse suppliers:', e);
+      }
+    }
+
+    // Load real activities from tracker
+    const activities = activityTracker.getActivities();
+    setRealRecentActivities(activities);
+    console.log('Loaded real activities from tracker:', activities);
+  }, []);
+
+  // Function to add activity to recent activities
+  const addRecentActivity = (action: string, amount: string, user: string) => {
+    activityTracker.addActivity(action, amount, 'system');
+    const updatedActivities = activityTracker.getActivities();
+    setRealRecentActivities(updatedActivities);
+    console.log('Added recent activity:', { action, amount, user });
+  };
+
+  // Expose activity tracker to window for global access
+  useEffect(() => {
+    (window as any).activityTracker = activityTracker;
+    console.log('🔥 Activity Tracker available globally as window.activityTracker');
+  }, []);
   return (
     <DashboardLayout userRole={userRole} onLogout={onLogout}>
       <div className="space-y-6">
@@ -53,12 +136,12 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 mb-1">Total Sales Today</p>
-                <h2 className="text-gray-800">Rs. 45,230</h2>
-                <p className="text-green-600 text-sm mt-2">+12.5% from yesterday</p>
+                <p className="text-gray-600 mb-1">Total Products</p>
+                <h2 className="text-gray-800">{products.length}</h2>
+                <p className="text-green-600 text-sm mt-2">Active inventory</p>
               </div>
               <div className="bg-blue-100 p-3 rounded-full">
-                <DollarSign className="w-8 h-8 text-blue-600" />
+                <Package className="w-8 h-8 text-blue-600" />
               </div>
             </div>
           </div>
@@ -66,12 +149,12 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 mb-1">Total Products</p>
-                <h2 className="text-gray-800">1,245</h2>
-                <p className="text-green-600 text-sm mt-2">+23 new items</p>
+                <p className="text-gray-600 mb-1">Total Employees</p>
+                <h2 className="text-gray-800">{employees.length}</h2>
+                <p className="text-green-600 text-sm mt-2">{employees.filter((e: any) => e.status === 'active').length} active</p>
               </div>
               <div className="bg-green-100 p-3 rounded-full">
-                <Package className="w-8 h-8 text-green-600" />
+                <Users className="w-8 h-8 text-green-600" />
               </div>
             </div>
           </div>
@@ -80,11 +163,11 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 mb-1">Total Customers</p>
-                <h2 className="text-gray-800">3,567</h2>
-                <p className="text-green-600 text-sm mt-2">+145 this month</p>
+                <h2 className="text-gray-800">{customers.length}</h2>
+                <p className="text-green-600 text-sm mt-2">Registered users</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-full">
-                <Users className="w-8 h-8 text-purple-600" />
+                <ShoppingCart className="w-8 h-8 text-purple-600" />
               </div>
             </div>
           </div>
@@ -92,12 +175,12 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
           <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 mb-1">Orders Today</p>
-                <h2 className="text-gray-800">182</h2>
-                <p className="text-green-600 text-sm mt-2">+8.2% from yesterday</p>
+                <p className="text-gray-600 mb-1">Total Suppliers</p>
+                <h2 className="text-gray-800">{suppliers.length}</h2>
+                <p className="text-green-600 text-sm mt-2">{suppliers.filter((s: any) => s.status === 'active').length} active</p>
               </div>
               <div className="bg-orange-100 p-3 rounded-full">
-                <ShoppingCart className="w-8 h-8 text-orange-600" />
+                <TrendingUp className="w-8 h-8 text-orange-600" />
               </div>
             </div>
           </div>
@@ -198,15 +281,27 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-gray-800 mb-4">Recent Activities</h3>
           <div className="space-y-3">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border-b last:border-0">
-                <div>
-                  <p className="text-gray-800">{activity.action}</p>
-                  <p className="text-sm text-gray-500">{activity.time} • {activity.user}</p>
+            {realRecentActivities.map((activity, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div>
+                    <p className="text-gray-800">{activity.action}</p>
+                    <p className="text-sm text-gray-500">{activity.amount}</p>
+                  </div>
                 </div>
-                <p className="text-gray-700">{activity.amount}</p>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">{activity.time}</p>
+                  <p className="text-xs text-gray-400">{activity.user}</p>
+                </div>
               </div>
             ))}
+            {realRecentActivities.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No recent activities</p>
+                <p className="text-sm">Activities will appear here as you use the system</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

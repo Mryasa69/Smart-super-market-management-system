@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import HomePage from "./components/pages/HomePage";
@@ -12,39 +13,67 @@ import EmployeeManagement from "./components/pages/EmployeeManagement";
 import CustomerManagement from "./components/pages/CustomerManagement";
 import ReportsAnalytics from "./components/pages/ReportsAnalytics";
 
+type UserRole = "admin" | "cashier" | "stock_manager" | null;
+
 function App() {
+  const [userRole, setUserRole] = useState<UserRole>(null);
+
+  // Load saved role on refresh
+  useEffect(() => {
+    const savedRole = localStorage.getItem("userRole") as UserRole | null;
+    if (savedRole) {
+      setUserRole(savedRole);
+    }
+  }, []);
+
+  const handleLogin = (role: "admin" | "cashier" | "stock_manager") => {
+    setUserRole(role);
+    localStorage.setItem("userRole", role);
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("authToken");
+  };
+
   return (
     <BrowserRouter>
       <Routes>
         {/* Public pages */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage onLogin={function (role: "admin" | "cashier" | "stock_manager"): void {
-          throw new Error("Function not implemented.");
-        } } />} />
+        <Route path="/" element={<HomePage onLogout={handleLogout} />} />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
         <Route path="/signup" element={<SignUpPage />} />
 
-        {/* Admin pages */}
-        <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/inventory" element={<InventoryManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/suppliers" element={<SupplierManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/pos" element={<POSSystem userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/employees" element={<EmployeeManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/customers" element={<CustomerManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/reports" element={<ReportsAnalytics userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
+        {/* Admin / dashboard pages */}
+        <Route
+          path="/dashboard"
+          element={<AdminDashboard userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/inventory"
+          element={<InventoryManagement userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/suppliers"
+          element={<SupplierManagement userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/pos"
+          element={<POSSystem userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/employees"
+          element={<EmployeeManagement userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/customers"
+          element={<CustomerManagement userRole={userRole} onLogout={handleLogout} />}
+        />
+        <Route
+          path="/reports"
+          element={<ReportsAnalytics userRole={userRole} onLogout={handleLogout} />}
+        />
       </Routes>
     </BrowserRouter>
   );

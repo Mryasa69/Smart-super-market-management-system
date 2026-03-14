@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check } from 'lucide-react';
+import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check, Heart, Star, LogOut, UserCircle, ChevronDown, Settings, FileText, CreditCard, ShoppingBag, TrendingUp, Shield, Database, HelpCircle, LayoutDashboard, Package, Users, BarChart3, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const categories = [
@@ -13,25 +13,11 @@ const categories = [
   { name: 'Personal Care', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop' },
 ];
 
-const featuredProducts = [
-  { id: 1, name: 'Fresh Apples', price: 'Rs. 450/kg', image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&h=300&fit=crop', discount: '10% OFF' },
-  { id: 2, name: 'Milk 1L', price: 'Rs. 280', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop', discount: null },
-  { id: 3, name: 'White Bread', price: 'Rs. 120', image: 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=300&h=300&fit=crop', discount: '5% OFF' },
-  { id: 4, name: 'Fresh Chicken', price: 'Rs. 850/kg', image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=300&h=300&fit=crop', discount: null },
-  { id: 5, name: 'Orange Juice', price: 'Rs. 320', image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=300&h=300&fit=crop', discount: '15% OFF' },
-  { id: 6, name: 'Chocolate Bar', price: 'Rs. 180', image: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&h=300&fit=crop', discount: null },
-];
+interface HomePageProps {
+  onLogout?: () => void;
+}
 
-const weeklyDeals = [
-  { id: 1, name: 'Premium Rice 5kg', originalPrice: 'Rs. 1,200', salePrice: 'Rs. 720', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop', discount: '40%', badge: 'HOT DEAL' },
-  { id: 2, name: 'Fresh Salmon', originalPrice: 'Rs. 2,500/kg', salePrice: 'Rs. 1,750/kg', image: 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop', discount: '30%', badge: 'WEEKLY SPECIAL' },
-  { id: 3, name: 'Imported Cheese', originalPrice: 'Rs. 950', salePrice: 'Rs. 665', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop', discount: '30%', badge: 'LIMITED' },
-  { id: 4, name: 'Breakfast Cereal 500g', originalPrice: 'Rs. 680', salePrice: 'Rs. 476', image: 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop', discount: '30%', badge: 'BEST SELLER' },
-  { id: 5, name: 'Olive Oil 1L', originalPrice: 'Rs. 1,800', salePrice: 'Rs. 1,260', image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop', discount: '30%', badge: 'PREMIUM' },
-  { id: 6, name: 'Fresh Strawberries', originalPrice: 'Rs. 850', salePrice: 'Rs. 595', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop', discount: '30%', badge: 'FRESH TODAY' },
-];
-
-export default function HomePage() {
+export default function HomePage({ onLogout }: HomePageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [addedToCart, setAddedToCart] = useState<number | null>(null);
@@ -41,6 +27,270 @@ export default function HomePage() {
     minutes: 45,
     seconds: 30
   });
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [customerData, setCustomerData] = useState<any>(null);
+  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState([
+    { id: 1, name: 'Fresh Apples', price: 'Rs. 450/kg', image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&h=300&fit=crop', discount: '10% OFF' },
+    { id: 2, name: 'Milk 1L', price: 'Rs. 280', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop', discount: null },
+    { id: 3, name: 'White Bread', price: 'Rs. 120', image: 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=300&h=300&fit=crop', discount: '5% OFF' },
+    { id: 4, name: 'Fresh Chicken', price: 'Rs. 850/kg', image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=300&h=300&fit=crop', discount: null },
+    { id: 5, name: 'Orange Juice', price: 'Rs. 320', image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=300&h=300&fit=crop', discount: '15% OFF' },
+    { id: 6, name: 'Chocolate Bar', price: 'Rs. 180', image: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&h=300&fit=crop', discount: null },
+  ]);
+  const [weeklyDeals, setWeeklyDeals] = useState([
+    { id: 1, name: 'Premium Rice 5kg', originalPrice: 'Rs. 1,200', salePrice: 'Rs. 720', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop', discount: '40%', badge: 'HOT DEAL' },
+    { id: 2, name: 'Fresh Salmon', originalPrice: 'Rs. 2,500/kg', salePrice: 'Rs. 1,750/kg', image: 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop', discount: '30%', badge: 'WEEKLY SPECIAL' },
+    { id: 3, name: 'Imported Cheese', originalPrice: 'Rs. 950', salePrice: 'Rs. 665', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop', discount: '30%', badge: 'LIMITED' },
+    { id: 4, name: 'Breakfast Cereal 500g', originalPrice: 'Rs. 680', salePrice: 'Rs. 476', image: 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop', discount: '30%', badge: 'BEST SELLER' },
+    { id: 5, name: 'Olive Oil 1L', originalPrice: 'Rs. 1,800', salePrice: 'Rs. 1,260', image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop', discount: '30%', badge: 'PREMIUM' },
+    { id: 6, name: 'Fresh Strawberries', originalPrice: 'Rs. 850', salePrice: 'Rs. 595', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop', discount: '30%', badge: 'FRESH TODAY' },
+  ]);
+
+  // Check authentication state on mount
+  useEffect(() => {
+    const savedRole = localStorage.getItem('userRole');
+    if (savedRole) {
+      setUserRole(savedRole);
+      if (savedRole === 'customer') {
+        // Try to get customer data from API
+        fetchCustomerData();
+      }
+    }
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isDropdownOpen) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [isDropdownOpen]);
+
+  // Listen for product updates from inventory management
+  useEffect(() => {
+    const handleProductsUpdated = (event: CustomEvent) => {
+      console.log('🔥 HomePage received product update event:', event.detail);
+      
+      // Refresh products from localStorage
+      const updatedProducts = localStorage.getItem('products');
+      if (updatedProducts) {
+        try {
+          const parsed = JSON.parse(updatedProducts);
+          console.log('🔥 HomePage refreshed products:', parsed);
+          
+          // Update featured products and weekly deals based on the new products
+          // This will trigger a re-render with updated product information
+          updateHomePageProducts(parsed);
+          
+        } catch (error) {
+          console.error('Failed to parse updated products:', error);
+        }
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('productsUpdated', handleProductsUpdated as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('productsUpdated', handleProductsUpdated as EventListener);
+    };
+  }, []);
+
+  // Function to update home page products based on inventory changes
+  const updateHomePageProducts = (inventoryProducts: any[]) => {
+    // Define proper placeholder images for different categories
+    const categoryImages: { [key: string]: string } = {
+      'Dairy': 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop',
+      'Bakery': 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=300&h=300&fit=crop',
+      'Vegetables': 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=300&h=300&fit=crop',
+      'Meat': 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=300&h=300&fit=crop',
+      'Beverages': 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9d?w=300&h=300&fit=crop',
+      'Snacks': 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&h=300&fit=crop',
+      'Grains': 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=300&fit=crop',
+      'Fruits': 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&h=300&fit=crop',
+      'Other': 'https://images.unsplash.com/photo-1546069201-fa0b8da78894?w=300&h=300&fit=crop'
+    };
+
+    // Map inventory products to featured products format
+    const updatedFeaturedProducts = inventoryProducts
+      .filter(product => product.specialOffers === true) // Use product flags
+      .slice(0, 6)
+      .map((product, index) => ({
+      id: product.id,
+      name: product.name,
+      price: `Rs. ${product.price}`,
+      image: categoryImages[product.category] || categoryImages['Other'],
+      discount: product.quantity <= product.minStock ? 'Low Stock' : 'SPECIAL OFFER'
+    }));
+
+    // Map products to weekly deals (only those added within last 7 days)
+    const currentDate = new Date();
+    const updatedWeeklyDeals = inventoryProducts
+      .filter(product => {
+        // Check if product is marked for weekly deals and added within 7 days
+        if (product.weeklyDeals === true) {
+          if (product.weeklyDealsAddedAt) {
+            const addedDate = new Date(product.weeklyDealsAddedAt);
+            const daysDiff = Math.floor((currentDate.getTime() - addedDate.getTime()) / (1000 * 60 * 60 * 24));
+            return daysDiff < 7; // Only show if less than 7 days
+          }
+          // For backwards compatibility, show if no timestamp but flagged
+          return true;
+        }
+        return false;
+      })
+      .slice(0, 6)
+      .map((product, index) => {
+      const originalPrice = product.price * 1.3; // Show as if it's on sale
+      return {
+        id: product.id,
+        name: product.name,
+        originalPrice: `Rs. ${originalPrice.toFixed(0)}`,
+        salePrice: `Rs. ${product.price}`,
+        image: categoryImages[product.category] || categoryImages['Other'],
+        discount: '30%',
+        badge: index === 0 ? 'WEEKLY DEAL' : 'HOT DEAL'
+      };
+    });
+
+    // Show all products as regular products (including those with special flags)
+    const regularProducts = inventoryProducts
+      .slice(0, 12) // Show more products since this is the main display
+      .map((product, index) => ({
+      id: product.id,
+      name: product.name,
+      price: `Rs. ${product.price}`,
+      image: categoryImages[product.category] || categoryImages['Other'],
+      discount: product.quantity <= product.minStock ? 'Low Stock' : 
+                 product.specialOffers ? 'SPECIAL OFFER' : 
+                 product.weeklyDeals ? 'WEEKLY DEAL' : null
+      }));
+
+    // Update the component state
+    setFeaturedProducts(updatedFeaturedProducts);
+    setWeeklyDeals(updatedWeeklyDeals);
+    
+    console.log('🔥 Updated featured products:', updatedFeaturedProducts);
+    console.log('🔥 Updated weekly deals:', updatedWeeklyDeals);
+  };
+
+  // Load initial products from localStorage on mount
+  useEffect(() => {
+    const storedProducts = localStorage.getItem('products');
+    if (storedProducts) {
+      try {
+        const parsed = JSON.parse(storedProducts);
+        if (parsed.length > 0) {
+          updateHomePageProducts(parsed);
+        }
+      } catch (error) {
+        console.error('Failed to load initial products:', error);
+      }
+    }
+  }, []);
+
+  // Function to clean up expired weekly deals
+  const cleanupExpiredWeeklyDeals = async () => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        const response = await fetch('http://localhost:5000/api/products/cleanup-weekly-deals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.removedProducts.length > 0) {
+            console.log(`🔥 Cleaned up ${data.removedProducts.length} expired weekly deals:`, data.removedProducts);
+            
+            // Refresh products from localStorage to update the display
+            const storedProducts = localStorage.getItem('products');
+            if (storedProducts) {
+              try {
+                const parsed = JSON.parse(storedProducts);
+                // Update local products to remove expired weekly deals
+                const updatedProducts = parsed.map((product: any) => {
+                  const removedProduct = data.removedProducts.find((removed: any) => removed.id === product.id);
+                  if (removedProduct) {
+                    return { ...product, weeklyDeals: false, weeklyDealsAddedAt: null };
+                  }
+                  return product;
+                });
+                localStorage.setItem('products', JSON.stringify(updatedProducts));
+                updateHomePageProducts(updatedProducts);
+              } catch (error) {
+                console.error('Failed to update local products after cleanup:', error);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Failed to cleanup expired weekly deals:', error);
+      }
+    }
+  };
+
+  // Check for expired weekly deals every 5 minutes
+  useEffect(() => {
+    const cleanupInterval = setInterval(cleanupExpiredWeeklyDeals, 5 * 60 * 1000); // 5 minutes
+    
+    // Run cleanup immediately on mount
+    cleanupExpiredWeeklyDeals();
+    
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
+  const fetchCustomerData = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('http://localhost:5000/api/customers/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setCustomerData(data.data);
+        }
+      } else {
+        // Set basic data if API fails
+        setCustomerData({
+          name: localStorage.getItem('customerName') || 'Customer',
+          loyaltyPoints: 0,
+          tier: 'Bronze'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching customer data:', error);
+      // Set basic data if API fails
+      setCustomerData({
+        name: localStorage.getItem('customerName') || 'Customer',
+        loyaltyPoints: 0,
+        tier: 'Bronze'
+      });
+    }
+  };
+
+  const handleAddToWishlist = (productId: number) => {
+    setWishlist(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
 
   // Countdown timer for weekly deals
   useEffect(() => {
@@ -119,6 +369,18 @@ export default function HomePage() {
               </span>
             </div>
             <div className="flex items-center gap-4">
+              {userRole === 'customer' && customerData && (
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-4 h-4" />
+                    {customerData.loyaltyPoints || 0} Points
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="w-4 h-4" />
+                    {wishlist.length} Wishlist
+                  </span>
+                </div>
+              )}
               <span className="flex items-center gap-1">
                 <MapPin className="w-4 h-4" />
                 Store Locator
@@ -156,10 +418,237 @@ export default function HomePage() {
 
             {/* Right Side Icons */}
             <div className="flex items-center gap-6">
-              <Link to="/login" className="flex flex-col items-center gap-1 hover:text-green-700">
-                <User className="w-6 h-6" />
-                <span className="text-sm">Account</span>
-              </Link>
+              {userRole ? (
+                <div className="flex items-center gap-4">
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      className="flex flex-col items-center gap-1 hover:text-green-700"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsDropdownOpen(!isDropdownOpen);
+                      }}
+                    >
+                      <UserCircle className="w-6 h-6" />
+                      <span className="text-sm capitalize">{userRole}</span>
+                    </button>
+                    {isDropdownOpen && (
+                      <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                        {/* Account Info */}
+                        <div className="px-4 py-3 border-b border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <UserCircle className="w-8 h-8 text-green-700" />
+                            <div>
+                              <p className="font-semibold text-gray-900 capitalize">{userRole}</p>
+                              <p className="text-sm text-gray-500">Logged in</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Menu Items */}
+                        <div className="py-2">
+                          {userRole === 'customer' ? (
+                            <>
+                              {/* Profile Management - Available for all roles */}
+                              <div className="px-3 py-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Profile Management</p>
+                                <div className="space-y-1">
+                                  <Link
+                                    to="/customer-portal"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsDropdownOpen(false);
+                                    }}
+                                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                  >
+                                    <UserCircle className="w-4 h-4" />
+                                    <span>My Profile</span>
+                                  </Link>
+                                  <Link
+                                    to="/customer-portal"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsDropdownOpen(false);
+                                    }}
+                                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                  >
+                                    <FileText className="w-4 h-4" />
+                                    <span>View Orders</span>
+                                  </Link>
+                                  <Link
+                                    to="/customer-portal"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsDropdownOpen(false);
+                                    }}
+                                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                  >
+                                    <Heart className="w-4 h-4" />
+                                    <span>Wishlist</span>
+                                  </Link>
+                                </div>
+                              </div>
+
+                              {/* Logout */}
+                              <div className="px-3 py-2 border-t border-gray-200">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsDropdownOpen(false);
+                                    if (onLogout) {
+                                      onLogout();
+                                      // Redirect to login page
+                                      window.location.href = '/login';
+                                    }
+                                  }}
+                                  className="flex items-center gap-3 px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors w-full"
+                                >
+                                  <LogOut className="w-4 h-4" />
+                                  <span>Logout</span>
+                                </button>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {/* System Management - Role-based */}
+                              <div className="px-3 py-2">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">System Management</p>
+                                <div className="space-y-1">
+                                  {/* Dashboard - All roles */}
+                                  <Link
+                                    to="/dashboard"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setIsDropdownOpen(false);
+                                    }}
+                                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                  >
+                                    <LayoutDashboard className="w-4 h-4" />
+                                    <span>Dashboard</span>
+                                  </Link>
+                                  
+                                  {/* Inventory - Admin & Stock Manager */}
+                                  {(userRole === 'admin' || userRole === 'stock_manager') && (
+                                    <Link
+                                      to="/inventory"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <Package className="w-4 h-4" />
+                                      <span>Inventory</span>
+                                    </Link>
+                                  )}
+                                  
+                                  {/* POS System - Admin & Cashier */}
+                                  {(userRole === 'admin' || userRole === 'cashier') && (
+                                    <Link
+                                      to="/pos"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <ShoppingCart className="w-4 h-4" />
+                                      <span>POS System</span>
+                                    </Link>
+                                  )}
+                                  
+                                  {/* Employees - Admin Only */}
+                                  {userRole === 'admin' && (
+                                    <Link
+                                      to="/employees"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <Users className="w-4 h-4" />
+                                      <span>Employees</span>
+                                    </Link>
+                                  )}
+                                  
+                                  {/* Customers - Admin & Cashier */}
+                                  {(userRole === 'admin' || userRole === 'cashier') && (
+                                    <Link
+                                      to="/customers"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <UserCircle className="w-4 h-4" />
+                                      <span>Customers</span>
+                                    </Link>
+                                  )}
+                                  
+                                  {/* Suppliers - Admin & Stock Manager */}
+                                  {(userRole === 'admin' || userRole === 'stock_manager') && (
+                                    <Link
+                                      to="/suppliers"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <Truck className="w-4 h-4" />
+                                      <span>Suppliers</span>
+                                    </Link>
+                                  )}
+                                  
+                                  {/* Reports - Admin Only */}
+                                  {userRole === 'admin' && (
+                                    <Link
+                                      to="/reports"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsDropdownOpen(false);
+                                      }}
+                                      className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                      <BarChart3 className="w-4 h-4" />
+                                      <span>Reports & Analytics</span>
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Logout */}
+                              <div className="px-3 py-2 border-t border-gray-200">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsDropdownOpen(false);
+                                    if (onLogout) {
+                                      onLogout();
+                                      // Redirect to login page
+                                      window.location.href = '/login';
+                                    }
+                                  }}
+                                  className="flex items-center gap-3 px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors w-full"
+                                >
+                                  <LogOut className="w-4 h-4" />
+                                  <span>Logout</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <Link to="/login" className="flex flex-col items-center gap-1 hover:text-green-700">
+                  <User className="w-6 h-6" />
+                  <span className="text-sm">Account</span>
+                </Link>
+              )}
               <button className="flex flex-col items-center gap-1 relative hover:text-green-700">
                 <ShoppingCart className="w-6 h-6" />
                 {cartCount > 0 && (
@@ -192,7 +681,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <h2 className="text-green-700 mb-4">Fresh Groceries Delivered to Your Doorstep</h2>
+              <h2 className="text-4xl font-bold text-green-700 mb-4">Fresh Groceries Delivered to Your Doorstep</h2>
               <p className="text-gray-600 mb-6">Shop from our wide range of fresh fruits, vegetables, dairy products, and more. Quality guaranteed!</p>
               <button className="bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800">
                 Shop Now
@@ -212,7 +701,7 @@ export default function HomePage() {
       {/* Shop by Category */}
       <section id="categories" className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-gray-800 mb-8 text-center">Shop by Category</h2>
+          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Shop by Category</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.map((category, index) => (
               <div 
@@ -238,8 +727,8 @@ export default function HomePage() {
       {/* Featured Products */}
       <section id="offers" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-gray-800 mb-8 text-center">Special Offers</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Special Offers</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {featuredProducts.map((product) => (
               <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
                 <div className="relative">
@@ -257,13 +746,28 @@ export default function HomePage() {
                 <div className="p-4">
                   <h3 className="text-gray-800 mb-2">{product.name}</h3>
                   <p className="text-green-700 mb-3">{product.price}</p>
-                  <button 
-                    className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                    onClick={() => handleAddToCart(product.id, product.name)}
-                    disabled={addedToCart === product.id}
-                  >
-                    {addedToCart === product.id ? 'Added!' : 'Add to Cart'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                      onClick={() => handleAddToCart(product.id, product.name)}
+                      disabled={addedToCart === product.id}
+                    >
+                      {addedToCart === product.id ? 'Added!' : 'Add to Cart'}
+                    </button>
+                    {userRole === 'customer' && (
+                      <button 
+                        className={`p-2 rounded transition-colors ${
+                          wishlist.includes(product.id) 
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                        onClick={() => handleAddToWishlist(product.id)}
+                        title={wishlist.includes(product.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                      >
+                        <Heart className="w-4 h-4" fill={wishlist.includes(product.id) ? 'currentColor' : 'none'} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -274,8 +778,8 @@ export default function HomePage() {
       {/* Weekly Deals */}
       <section id="weekly-deals" className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-gray-800 mb-8 text-center">Weekly Deals</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Weekly Deals</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {weeklyDeals.map((deal) => (
               <div key={deal.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
                 <div className="relative">
@@ -335,21 +839,21 @@ export default function HomePage() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShoppingCart className="w-8 h-8 text-green-700" />
               </div>
-              <h3 className="text-gray-800 mb-2">Quality Products</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Quality Products</h3>
               <p className="text-gray-600">Fresh and high-quality products guaranteed</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MapPin className="w-8 h-8 text-green-700" />
               </div>
-              <h3 className="text-gray-800 mb-2">Island-wide Delivery</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Island-wide Delivery</h3>
               <p className="text-gray-600">Fast delivery to your doorstep</p>
             </div>
             <div className="text-center">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <User className="w-8 h-8 text-green-700" />
               </div>
-              <h3 className="text-gray-800 mb-2">Loyalty Rewards</h3>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Loyalty Rewards</h3>
               <p className="text-gray-600">Earn points with every purchase</p>
             </div>
           </div>
@@ -361,11 +865,11 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <h3 className="mb-4">About Us</h3>
+              <h3 className="mb-4 text-lg font-semibold">About Us</h3>
               <p className="text-gray-400">Smart Supermarket - Your trusted partner for fresh groceries and daily essentials.</p>
             </div>
             <div>
-              <h3 className="mb-4">Quick Links</h3>
+              <h3 className="mb-4 text-lg font-semibold">Quick Links</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#" className="hover:text-white">About</a></li>
                 <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
@@ -374,7 +878,7 @@ export default function HomePage() {
               </ul>
             </div>
             <div>
-              <h3 className="mb-4">Customer Service</h3>
+              <h3 className="mb-4 text-lg font-semibold">Customer Service</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#" className="hover:text-white">Contact Us</a></li>
                 <li><a href="#" className="hover:text-white">Return Policy</a></li>
@@ -383,7 +887,7 @@ export default function HomePage() {
               </ul>
             </div>
             <div>
-              <h3 className="mb-4">Follow Us</h3>
+              <h3 className="mb-4 text-lg font-semibold">Follow Us</h3>
               <div className="flex gap-4">
                 <Facebook className="w-6 h-6 cursor-pointer hover:text-green-400" />
                 <Instagram className="w-6 h-6 cursor-pointer hover:text-green-400" />

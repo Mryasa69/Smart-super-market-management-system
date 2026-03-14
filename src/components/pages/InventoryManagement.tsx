@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Search, Plus, Edit, Trash2, Package, Filter, Download, QrCode } from 'lucide-react';
+import ActivityTracker from '../../utils/activityTracker';
 
 interface InventoryManagementProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
+  userRole: 'admin' | 'cashier' | 'stock_manager' | 'customer' | null;
   onLogout: () => void;
 }
 
 interface Product {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   sku: string;
@@ -17,6 +18,9 @@ interface Product {
   minStock: number;
   supplier: string;
   status: 'in-stock' | 'low-stock' | 'out-of-stock';
+  specialOffers?: boolean;
+  weeklyDeals?: boolean;
+  weeklyDealsAddedAt?: string | null;
 }
 
 const initialProducts: Product[] = [
@@ -37,8 +41,67 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const activityTracker = ActivityTracker.getInstance();
+  
+  // Form state
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    sku: '',
+    category: 'Dairy',
+    supplier: '',
+    quantity: 0,
+    minStock: 10,
+    price: 0,
+    specialOffers: false,
+    weeklyDeals: false,
+  });
 
   const categories = ['all', 'Dairy', 'Bakery', 'Vegetables', 'Meat', 'Grains', 'Beverages', 'Snacks'];
+
+  // Load products from localStorage and backend
+  useEffect(() => {
+    // Load products from localStorage first
+    const localProducts = localStorage.getItem('products');
+    
+    if (localProducts) {
+      try {
+        const parsed = JSON.parse(localProducts);
+        setProducts(parsed);
+      } catch (e) {
+        console.error('Failed to parse localStorage products:', e);
+      }
+    }
+    
+    // Try to load from backend
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetch('http://localhost:5000/api/products', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(response => response.ok ? response.json() : Promise.reject('Failed'))
+      .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+          const transformed = data.data.map((product: any) => ({
+            id: product._id || product.id,
+            name: product.name || 'Unknown',
+            category: product.category || 'Other',
+            sku: product.sku || '',
+            quantity: product.quantity || 0,
+            price: product.price || 0,
+            minStock: product.minStock || 10,
+            supplier: product.supplier || 'Unknown',
+            status: product.status || 'in-stock',
+            specialOffers: product.specialOffers || false,
+            weeklyDeals: product.weeklyDeals || false,
+            weeklyDealsAddedAt: product.weeklyDealsAddedAt || null,
+          }));
+          setProducts(transformed);
+          localStorage.setItem('products', JSON.stringify(transformed));
+        }
+      })
+      .catch(e => console.log('Backend fetch failed:', e));
+    }
+  }, []);
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,9 +111,225 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleDeleteProduct = (id: number) => {
+  const handleDeleteProduct = async (id: string | number) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter((p) => p.id !== id));
+      const productToDelete = products.find(p => p.id === id);
+      
+      // Try to delete from backend
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          await fetch(`http://localhost:5000/api/products/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` },
+          });
+        } catch (error) {
+          console.log('Backend delete failed, removing locally:', error);
+        }
+      }
+      
+      const updatedProducts = products.filter((p) => p.id !== id);
+      setProducts(updatedProducts);
+      localStorage.setItem('products', JSON.stringify(updatedProducts));
+      
+      // Trigger a custom event to notify other components (like HomePage) of the deletion
+      window.dispatchEvent(new CustomEvent('productsUpdated', { 
+        detail: { 
+          action: 'delete',
+          product: productToDelete,
+          allProducts: updatedProducts
+        } 
+      }));
+      
+      // Log activity
+      if (productToDelete) {
+        activityTracker.logProductDeleted(productToDelete.name);
+      }
+      
+      alert('Product deleted successfully!');
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    console.log('🔥 STARTING PRODUCT ADDITION 🔥');
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const requestData = {
+        name: newProduct.name,
+        category: newProduct.category,
+        sku: newProduct.sku,
+        quantity: newProduct.quantity,
+        price: newProduct.price,
+        minStock: newProduct.minStock,
+        supplier: newProduct.supplier,
+        barcode: newProduct.sku,
+        specialOffers: newProduct.specialOffers || false,
+        weeklyDeals: newProduct.weeklyDeals || false,
+      };
+      
+      let apiSuccess = false;
+      let backendProductId = null;
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:5000/api/products', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(requestData),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Backend product creation response:', data);
+            backendProductId = data.data?._id || data.data?.id || data.id;
+            apiSuccess = true;
+          }
+        } catch (error) {
+          console.log('Backend product creation failed:', error);
+        }
+      }
+
+      const status = newProduct.quantity <= 0 ? 'out-of-stock' : 
+                    newProduct.quantity <= newProduct.minStock ? 'low-stock' : 'in-stock';
+      
+      const product: Product = {
+        id: backendProductId || (Math.max(...products.filter(p => typeof p.id === 'number').map(p => p.id as number), 0) + 1),
+        name: newProduct.name,
+        sku: newProduct.sku,
+        category: newProduct.category,
+        supplier: newProduct.supplier,
+        quantity: newProduct.quantity,
+        minStock: newProduct.minStock,
+        price: newProduct.price,
+        status: status as 'in-stock' | 'low-stock' | 'out-of-stock',
+        specialOffers: newProduct.specialOffers || false,
+        weeklyDeals: newProduct.weeklyDeals || false,
+      };
+
+      const updatedProducts = [...products, product];
+      setProducts(updatedProducts);
+      localStorage.setItem('products', JSON.stringify(updatedProducts));
+      
+      // Trigger a custom event to notify other components (like HomePage) of the addition
+      window.dispatchEvent(new CustomEvent('productsUpdated', { 
+        detail: { 
+          action: 'add',
+          product: product,
+          allProducts: updatedProducts
+        } 
+      }));
+      
+      // Log activity
+      activityTracker.logProductAdded(product.name);
+      
+      setNewProduct({
+        name: '',
+        sku: '',
+        category: 'Dairy',
+        supplier: '',
+        quantity: 0,
+        minStock: 10,
+        price: 0,
+        specialOffers: false,
+        weeklyDeals: false,
+      });
+      setShowAddModal(false);
+      
+      alert(apiSuccess ? 'Product added successfully!' : 'Product added locally');
+    } catch (error) {
+      console.error('Error adding product:', error);
+      alert('Failed to add product');
+    }
+  };
+
+  const handleUpdateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingProduct) return;
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      const requestData = {
+        name: editingProduct.name,
+        sku: editingProduct.sku,
+        category: editingProduct.category,
+        supplier: editingProduct.supplier,
+        quantity: editingProduct.quantity,
+        minStock: editingProduct.minStock,
+        price: editingProduct.price,
+        specialOffers: editingProduct.specialOffers || false,
+        weeklyDeals: editingProduct.weeklyDeals || false,
+      };
+      
+      let apiSuccess = false;
+      
+      if (token) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/products/${editingProduct.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(requestData),
+          });
+          
+          if (response.ok) {
+            apiSuccess = true;
+          } else {
+            console.error('Backend product update failed:', response.status);
+          }
+        } catch (error) {
+          console.error('Backend product update failed:', error);
+        }
+      }
+
+      const status = editingProduct.quantity <= 0 ? 'out-of-stock' : 
+                    editingProduct.quantity <= editingProduct.minStock ? 'low-stock' : 'in-stock';
+      
+      const updatedProduct = {
+        ...editingProduct,
+        status: status as 'in-stock' | 'low-stock' | 'out-of-stock',
+        specialOffers: editingProduct.specialOffers || false,
+        weeklyDeals: editingProduct.weeklyDeals || false,
+      };
+
+      // Always update locally (even if backend failed, to keep UI responsive)
+      const updatedProducts = products.map(p => 
+        p.id === editingProduct.id ? updatedProduct : p
+      );
+      
+      setProducts(updatedProducts);
+      localStorage.setItem('products', JSON.stringify(updatedProducts));
+      
+      // Trigger a custom event to notify other components (like HomePage) of the update
+      window.dispatchEvent(new CustomEvent('productsUpdated', { 
+        detail: { 
+          action: 'update',
+          product: updatedProduct,
+          allProducts: updatedProducts
+        } 
+      }));
+      
+      // Log activity
+      activityTracker.logProductUpdated(updatedProduct.name);
+      
+      setEditingProduct(null);
+      
+      if (apiSuccess) {
+        alert('Product updated successfully!');
+      } else if (token) {
+        alert('Product updated locally. Backend sync failed.');
+      } else {
+        alert('Product updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert('Failed to update product');
     }
   };
 
@@ -222,27 +501,47 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
               <h2 className="text-gray-800 mb-4">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h2>
-              <form className="space-y-4">
+              <form onSubmit={editingProduct ? handleUpdateProduct : handleAddProduct} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700 mb-2">Product Name</label>
                     <input
                       type="text"
+                      value={editingProduct ? editingProduct.name : newProduct.name}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, name: e.target.value}) :
+                        setNewProduct({...newProduct, name: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter product name"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">SKU</label>
                     <input
                       type="text"
+                      value={editingProduct ? editingProduct.sku : newProduct.sku}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, sku: e.target.value}) :
+                        setNewProduct({...newProduct, sku: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter SKU"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Category</label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <select 
+                      value={editingProduct ? editingProduct.category : newProduct.category}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, category: e.target.value}) :
+                        setNewProduct({...newProduct, category: e.target.value})
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
+                    >
                       {categories.filter((c) => c !== 'all').map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
@@ -252,33 +551,86 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                     <label className="block text-gray-700 mb-2">Supplier</label>
                     <input
                       type="text"
+                      value={editingProduct ? editingProduct.supplier : newProduct.supplier}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, supplier: e.target.value}) :
+                        setNewProduct({...newProduct, supplier: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter supplier"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Quantity</label>
                     <input
                       type="number"
+                      value={editingProduct ? editingProduct.quantity : newProduct.quantity}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, quantity: parseInt(e.target.value) || 0}) :
+                        setNewProduct({...newProduct, quantity: parseInt(e.target.value) || 0})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter quantity"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Minimum Stock</label>
                     <input
                       type="number"
+                      value={editingProduct ? editingProduct.minStock : newProduct.minStock}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, minStock: parseInt(e.target.value) || 0}) :
+                        setNewProduct({...newProduct, minStock: parseInt(e.target.value) || 0})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter minimum stock"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Price (Rs.)</label>
                     <input
                       type="number"
+                      value={editingProduct ? editingProduct.price : newProduct.price}
+                      onChange={(e) => editingProduct ? 
+                        setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0}) :
+                        setNewProduct({...newProduct, price: parseFloat(e.target.value) || 0})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter price"
+                      required
                     />
+                  </div>
+                  
+                  {/* Special Offers and Weekly Deals Checkboxes */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={editingProduct ? editingProduct.specialOffers || false : newProduct.specialOffers || false}
+                        onChange={(e) => editingProduct ? 
+                          setEditingProduct({...editingProduct, specialOffers: e.target.checked}) :
+                          setNewProduct({...newProduct, specialOffers: e.target.checked})
+                        }
+                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                      />
+                      <label className="text-gray-700 font-medium">Add to Special Offers</label>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={editingProduct ? editingProduct.weeklyDeals || false : newProduct.weeklyDeals || false}
+                        onChange={(e) => editingProduct ? 
+                          setEditingProduct({...editingProduct, weeklyDeals: e.target.checked}) :
+                          setNewProduct({...newProduct, weeklyDeals: e.target.checked})
+                        }
+                        className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                      />
+                      <label className="text-gray-700 font-medium">Add to Weekly Deals</label>
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end mt-6">

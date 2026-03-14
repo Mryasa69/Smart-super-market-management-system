@@ -2,9 +2,10 @@ import { useState } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import Sidebar from "../Layout/Sidebar"; // adjust the path
 import { Search, Plus, Minus, Trash2, CreditCard, Banknote, QrCode, Printer, X } from 'lucide-react';
+import ActivityTracker from '../../utils/activityTracker';
 
 interface POSSystemProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
+  userRole: 'admin' | 'cashier' | 'stock_manager' | 'customer' | null;
   onLogout: () => void;
 }
 
@@ -41,6 +42,7 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qr'>('cash');
+  const activityTracker = ActivityTracker.getInstance();
 
   const filteredProducts = availableProducts.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,6 +107,11 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
   };
 
   const completeSale = () => {
+    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+    
+    // Log activity
+    activityTracker.logSaleCompleted(`Rs. ${total.toFixed(2)}`, totalItems);
+    
     alert(`Sale completed! Total: Rs. ${total.toFixed(2)}\nPayment method: ${paymentMethod.toUpperCase()}`);
     setCart([]);
     setDiscountPercent(0);

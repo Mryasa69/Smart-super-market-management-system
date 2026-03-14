@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard } from 'lucide-react';
+import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, Phone } from 'lucide-react';
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -10,12 +10,13 @@ export default function SignUpPage() {
     email: '',
     password: '',
     confirmPassword: '',
-    nic: '',
+    phone: '',
     agreeToTerms: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -52,13 +53,95 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      // Simulate successful registration
-      alert('Registration successful! Please login with your credentials.');
-      navigate('/login');
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register-customer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        if (data.errors) {
+          const errorMessages: Record<string, string> = {};
+          data.errors.forEach((error: any) => {
+            errorMessages[error.path] = error.msg;
+          });
+          setErrors(errorMessages);
+        } else {
+          setErrors({ general: data.message || 'Registration failed' });
+        }
+        return;
+      }
+
+      // Save auth info for immediate login
+      localStorage.setItem('authToken', data.data.token);
+      localStorage.setItem('userRole', 'customer');
+      
+      // Save customer details
+      const fullName = `${formData.firstName} ${formData.lastName}`;
+      const currentDate = new Date().toISOString().split('T')[0];
+      localStorage.setItem('customerName', fullName);
+      localStorage.setItem('customerEmail', formData.email);
+      localStorage.setItem('customerPhone', formData.phone);
+      localStorage.setItem('customerLoyaltyPoints', '0');
+      localStorage.setItem('customerTier', 'Bronze');
+      localStorage.setItem('customerJoinDate', currentDate);
+
+      // Also add to customers list for CustomerManagement page
+      const existingCustomers = localStorage.getItem('customers');
+      let customersList = [];
+      
+      if (existingCustomers) {
+        try {
+          customersList = JSON.parse(existingCustomers);
+        } catch (e) {
+          console.log('Failed to parse existing customers, starting fresh');
+        }
+      }
+      
+      // Add new customer to the list
+      const newCustomer = {
+        id: Math.max(...customersList.map((c: any) => c.id || 0), 0) + 1,
+        name: fullName,
+        email: formData.email,
+        phone: formData.phone,
+        loyaltyPoints: 0,
+        totalPurchases: 0,
+        lastPurchase: currentDate,
+        tier: 'Bronze',
+        joinDate: currentDate,
+      };
+      
+      customersList.push(newCustomer);
+      localStorage.setItem('customers', JSON.stringify(customersList));
+      console.log('Added new customer to customers list:', newCustomer);
+
+      // Redirect to customer portal
+      navigate('/customer-portal');
+    } catch (error) {
+      setErrors({ general: 'Unable to connect to the server. Please try again.' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -78,8 +161,14 @@ export default function SignUpPage() {
 
         {/* Sign Up Form */}
         <div className="bg-white rounded-lg shadow-xl p-8">
-          <h2 className="text-gray-800 mb-2 text-center">Create Account</h2>
-          <p className="text-gray-600 text-center mb-6">Sign up to get started</p>
+          <h2 className="text-gray-800 mb-2 text-center">Create Customer Account</h2>
+          <p className="text-gray-600 text-center mb-6">Sign up to start shopping</p>
+
+          {errors.general && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{errors.general}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Fields */}
@@ -155,6 +244,24 @@ export default function SignUpPage() {
               )}
             </div>
 
+            {/* Phone */}
+            <div>
+              <label htmlFor="phone" className="block text-gray-700 mb-2">
+                Phone Number <span className="text-gray-500">(Optional)</span>
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="Enter phone number"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
             {/* Password Fields */}
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -218,24 +325,6 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            {/* NIC (Optional) */}
-            <div>
-              <label htmlFor="nic" className="block text-gray-700 mb-2">
-                NIC Number <span className="text-gray-500">(Optional)</span>
-              </label>
-              <div className="relative">
-                <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  id="nic"
-                  value={formData.nic}
-                  onChange={(e) => setFormData({ ...formData, nic: e.target.value })}
-                  placeholder="Enter NIC number (e.g., 123456789V)"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-            </div>
-
             {/* Terms and Conditions */}
             <div>
               <label className="flex items-start gap-2">
@@ -266,9 +355,10 @@ export default function SignUpPage() {
             {/* Sign Up Button */}
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors"
+              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              disabled={loading}
             >
-              Sign Up
+              {loading ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
 
