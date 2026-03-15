@@ -55,7 +55,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       // Inform parent so role can be stored in state
       onLogin(role);
 
-      navigate('/dashboard');
+      // Redirect based on role
+      if (role === 'customer') {
+        navigate('/');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError('Unable to connect to the server. Please make sure the backend is running.');
     } finally {

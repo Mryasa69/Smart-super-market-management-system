@@ -12,8 +12,9 @@ import POSSystem from "./components/pages/POSSystem";
 import EmployeeManagement from "./components/pages/EmployeeManagement";
 import CustomerManagement from "./components/pages/CustomerManagement";
 import ReportsAnalytics from "./components/pages/ReportsAnalytics";
+import CustomerPortal from "./components/pages/CustomerPortal";
 
-type UserRole = "admin" | "cashier" | "stock_manager" | null;
+type UserRole = "admin" | "cashier" | "stock_manager" | "customer" | null;
 
 function App() {
   const [userRole, setUserRole] = useState<UserRole>(null);
@@ -26,7 +27,7 @@ function App() {
     }
   }, []);
 
-  const handleLogin = (role: "admin" | "cashier" | "stock_manager") => {
+  const handleLogin = (role: "admin" | "cashier" | "stock_manager" | "customer") => {
     setUserRole(role);
     localStorage.setItem("userRole", role);
   };
@@ -35,6 +36,7 @@ function App() {
     setUserRole(null);
     localStorage.removeItem("userRole");
     localStorage.removeItem("authToken");
+    window.location.href = "/login";
   };
 
   return (
@@ -73,6 +75,12 @@ function App() {
         <Route
           path="/reports"
           element={<ReportsAnalytics userRole={userRole} onLogout={handleLogout} />}
+        />
+
+        {/* Customer pages */}
+        <Route
+          path="/customer-portal"
+          element={<CustomerPortal userRole={userRole} onLogout={handleLogout} />}
         />
       </Routes>
     </BrowserRouter>

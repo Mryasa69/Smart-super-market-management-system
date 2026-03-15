@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ShoppingCart, User, ShoppingBag, Heart, LogOut, Home, Package, Star } from 'lucide-react';
 
 interface CustomerPortalProps {
@@ -20,8 +20,18 @@ interface CustomerData {
 
 export default function CustomerPortal({ userRole, onLogout }: CustomerPortalProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<'profile' | 'orders' | 'wishlist'>('profile');
+
+  // Set active section based on URL parameter
+  useEffect(() => {
+    const section = searchParams.get('section') as 'profile' | 'orders' | 'wishlist';
+    if (section && ['profile', 'orders', 'wishlist'].includes(section)) {
+      setActiveSection(section);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (userRole !== 'customer') {
@@ -34,13 +44,6 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
 
   const fetchCustomerData = async () => {
     const customerName = localStorage.getItem('customerName');
-    console.log('Customer data from localStorage:', {
-      name: customerName,
-      email: localStorage.getItem('customerEmail'),
-      phone: localStorage.getItem('customerPhone'),
-      loyaltyPoints: localStorage.getItem('customerLoyaltyPoints'),
-      tier: localStorage.getItem('customerTier')
-    });
     
     try {
       const token = localStorage.getItem('authToken');
@@ -55,7 +58,6 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
 
         if (response.ok) {
           const data = await response.json();
-          console.log('Customer API Response:', data); // Debug: See API response
           if (data.success) {
             setCustomerData(data.data);
             setLoading(false);
@@ -65,7 +67,6 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
       }
       
       // Fallback to localStorage data if API fails
-      console.log('API failed, using localStorage data');
       const customerEmail = localStorage.getItem('customerEmail');
       const customerPhone = localStorage.getItem('customerPhone');
       const customerLoyaltyPoints = localStorage.getItem('customerLoyaltyPoints');
@@ -83,7 +84,6 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
         joinDate: customerJoinDate
       };
       
-      console.log('Setting fallback data:', fallbackData); // Debug: See fallback data
       setCustomerData(fallbackData);
     } catch (error) {
       console.error('Error fetching customer data:', error);
@@ -106,7 +106,6 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
         joinDate: customerJoinDate
       };
       
-      console.log('Setting error fallback data:', fallbackData); // Debug: See error fallback
       setCustomerData(fallbackData);
     } finally {
       setLoading(false);
@@ -115,77 +114,68 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
 
   const handleLogout = () => {
     onLogout();
-    navigate('/');
+    navigate('/login');
   };
 
   const handleShopNow = () => {
     navigate('/');
   };
 
-  const handleOrderHistory = () => {
-    // Navigate to order history section or page
-    console.log('Order History clicked');
-    // You can expand this to show actual order history
-  };
-
-  const handleWishlist = () => {
-    // Navigate to wishlist section or page
-    console.log('Wishlist clicked');
-    // You can expand this to show actual wishlist items
-  };
-
-  const handleProfileSettings = () => {
-    // Navigate to profile settings
-    console.log('Profile Settings clicked');
-    // You can expand this to show editable profile form
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case 'Bronze': return 'bg-orange-100 text-orange-800';
+      case 'Silver': return 'bg-gray-100 text-gray-800';
+      case 'Gold': return 'bg-yellow-100 text-yellow-800';
+      case 'Platinum': return 'bg-purple-100 text-purple-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your profile...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>
     );
   }
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'Platinum': return 'text-purple-600 bg-purple-100';
-      case 'Gold': return 'text-yellow-600 bg-yellow-100';
-      case 'Silver': return 'text-gray-600 bg-gray-100';
-      default: return 'text-orange-600 bg-orange-100';
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <ShoppingCart className="w-8 h-8 text-green-700 mr-3" />
-              <div>
-                <h1 className="text-xl font-bold text-green-700">Smart Supermarket</h1>
-                <p className="text-xs text-gray-500">Customer Portal</p>
-              </div>
+              <Link to="/" className="flex items-center gap-2">
+                <ShoppingCart className="w-8 h-8 text-green-700" />
+                <span className="text-xl font-bold text-gray-900">Smart Supermarket</span>
+              </Link>
             </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              Logout
-            </button>
+            <div className="flex items-center gap-4">
+              <Link 
+                to="/" 
+                className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between">
@@ -239,102 +229,100 @@ export default function CustomerPortal({ userRole, onLogout }: CustomerPortalPro
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <button 
-            onClick={handleShopNow}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <ShoppingCart className="w-8 h-8 text-green-600 mb-3" />
-            <h3 className="font-semibold text-gray-800">Shop Now</h3>
-            <p className="text-gray-600 text-sm">Browse products and place orders</p>
-          </button>
-
-          <button 
-            onClick={handleOrderHistory}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <Package className="w-8 h-8 text-blue-600 mb-3" />
-            <h3 className="font-semibold text-gray-800">Order History</h3>
-            <p className="text-gray-600 text-sm">View your past purchases</p>
-          </button>
-
-          <button 
-            onClick={handleWishlist}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <Heart className="w-8 h-8 text-red-600 mb-3" />
-            <h3 className="font-semibold text-gray-800">Wishlist</h3>
-            <p className="text-gray-600 text-sm">Manage your favorite items</p>
-          </button>
-
-          <button 
-            onClick={handleProfileSettings}
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left"
-          >
-            <User className="w-8 h-8 text-purple-600 mb-3" />
-            <h3 className="font-semibold text-gray-800">Profile Settings</h3>
-            <p className="text-gray-600 text-sm">Update your information</p>
-          </button>
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-lg shadow-md p-2 mb-6">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setActiveSection('profile')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeSection === 'profile' 
+                  ? 'bg-green-700 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Profile
+            </button>
+            <button
+              onClick={() => setActiveSection('orders')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeSection === 'orders' 
+                  ? 'bg-green-700 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Orders
+            </button>
+            <button
+              onClick={() => setActiveSection('wishlist')}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
+                activeSection === 'wishlist' 
+                  ? 'bg-green-700 text-white' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Wishlist
+            </button>
+          </div>
         </div>
 
-        {/* Account Information */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Information</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-gray-500 text-sm">Full Name</p>
-              <p className="font-medium text-gray-800">{customerData?.name || 'N/A'}</p>
-            </div>
-            
-            <div>
-              <p className="text-gray-500 text-sm">Email Address</p>
-              <p className="font-medium text-gray-800">{customerData?.email || 'N/A'}</p>
-            </div>
-            
-            <div>
-              <p className="text-gray-500 text-sm">Phone Number</p>
-              <p className="font-medium text-gray-800">{customerData?.phone || 'N/A'}</p>
-            </div>
-            
-            <div>
-              <p className="text-gray-500 text-sm">Member Since</p>
-              <p className="font-medium text-gray-800">
-                {customerData ? 
-                  new Date(customerData.joinDate || Date.now()).toLocaleDateString() : 
-                  'N/A'
-                }
-              </p>
-            </div>
-          </div>
-          
-          {customerData && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h4 className="text-md font-semibold text-gray-800 mb-3">Shopping Statistics</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-green-700">{customerData.loyaltyPoints || 0}</p>
-                  <p className="text-sm text-gray-600">Loyalty Points</p>
+        {/* Section-based Content */}
+        {activeSection === 'profile' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-semibold text-gray-800 mb-4">Profile Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-500 text-sm">Full Name</p>
+                  <p className="font-medium">{customerData?.name || 'N/A'}</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-2xl font-bold text-blue-700">Rs. {(customerData.totalPurchases || 0).toLocaleString()}</p>
-                  <p className="text-sm text-gray-600">Total Purchases</p>
+                <div>
+                  <p className="text-gray-500 text-sm">Email</p>
+                  <p className="font-medium">{customerData?.email || 'N/A'}</p>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
-                  <p className="text-lg font-semibold text-gray-700">
-                    {customerData.lastPurchase ? 
-                      new Date(customerData.lastPurchase).toLocaleDateString() : 
-                      'No purchases yet'
+                <div>
+                  <p className="text-gray-500 text-sm">Phone</p>
+                  <p className="font-medium">{customerData?.phone || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-sm">Member Since</p>
+                  <p className="font-medium">
+                    {customerData?.joinDate ? 
+                      new Date(customerData.joinDate).toLocaleDateString() : 
+                      'N/A'
                     }
                   </p>
-                  <p className="text-sm text-gray-600">Last Purchase</p>
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      </main>
+          </div>
+        )}
+
+        {activeSection === 'orders' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Order History</h3>
+            <p className="text-gray-600">You haven't placed any orders yet.</p>
+            <button 
+              onClick={handleShopNow}
+              className="mt-4 bg-green-700 text-white px-6 py-2 rounded-lg hover:bg-green-800 transition-colors"
+            >
+              Start Shopping
+            </button>
+          </div>
+        )}
+
+        {activeSection === 'wishlist' && (
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">My Wishlist</h3>
+            <p className="text-gray-600">Your wishlist is empty.</p>
+            <button 
+              onClick={handleShopNow}
+              className="mt-4 bg-green-700 text-white px-6 py-2 rounded-lg hover:bg-green-800 transition-colors"
+            >
+              Browse Products
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

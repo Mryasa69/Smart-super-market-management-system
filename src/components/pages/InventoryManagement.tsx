@@ -208,6 +208,7 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
         status: status as 'in-stock' | 'low-stock' | 'out-of-stock',
         specialOffers: newProduct.specialOffers || false,
         weeklyDeals: newProduct.weeklyDeals || false,
+        weeklyDealsAddedAt: newProduct.weeklyDeals ? new Date().toISOString() : null,
       };
 
       const updatedProducts = [...products, product];
@@ -296,6 +297,9 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
         status: status as 'in-stock' | 'low-stock' | 'out-of-stock',
         specialOffers: editingProduct.specialOffers || false,
         weeklyDeals: editingProduct.weeklyDeals || false,
+        weeklyDealsAddedAt: editingProduct.weeklyDeals && !editingProduct.weeklyDealsAddedAt 
+          ? new Date().toISOString() 
+          : editingProduct.weeklyDealsAddedAt,
       };
 
       // Always update locally (even if backend failed, to keep UI responsive)

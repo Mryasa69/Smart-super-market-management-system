@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check, Heart, Star, LogOut, UserCircle, ChevronDown, Settings, FileText, CreditCard, ShoppingBag, TrendingUp, Shield, Database, HelpCircle, LayoutDashboard, Package, Users, BarChart3, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -18,6 +18,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onLogout }: HomePageProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [addedToCart, setAddedToCart] = useState<number | null>(null);
@@ -121,7 +122,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
     // Map inventory products to featured products format
     const updatedFeaturedProducts = inventoryProducts
       .filter(product => product.specialOffers === true) // Use product flags
-      .slice(0, 6)
+      .slice(0, 12) // Increased from 6 to 12 products
       .map((product, index) => ({
       id: product.id,
       name: product.name,
@@ -146,7 +147,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
         }
         return false;
       })
-      .slice(0, 6)
+      .slice(0, 12) // Increased from 6 to 12 products
       .map((product, index) => {
       const originalPrice = product.price * 1.3; // Show as if it's on sale
       return {
@@ -181,8 +182,9 @@ export default function HomePage({ onLogout }: HomePageProps) {
     console.log('🔥 Updated weekly deals:', updatedWeeklyDeals);
   };
 
-  // Load initial products from localStorage on mount
+  // Load initial products from localStorage and backend on mount
   useEffect(() => {
+    // First try to load from localStorage
     const storedProducts = localStorage.getItem('products');
     if (storedProducts) {
       try {
@@ -194,6 +196,80 @@ export default function HomePage({ onLogout }: HomePageProps) {
         console.error('Failed to load initial products:', error);
       }
     }
+
+    // Then try to fetch from backend
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetch('http://localhost:5000/api/products', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(response => response.ok ? response.json() : Promise.reject('Failed'))
+      .then(data => {
+        if (data.success && data.data && data.data.length > 0) {
+          const transformed = data.data.map((product: any) => ({
+            id: product._id || product.id,
+            name: product.name || 'Unknown',
+            category: product.category || 'Other',
+            sku: product.sku || '',
+            quantity: product.quantity || 0,
+            price: product.price || 0,
+            minStock: product.minStock || 10,
+            supplier: product.supplier || 'Unknown',
+            status: product.status || 'in-stock',
+            specialOffers: product.specialOffers || false,
+            weeklyDeals: product.weeklyDeals || false,
+            weeklyDealsAddedAt: product.weeklyDealsAddedAt || null,
+          }));
+          
+          // Update localStorage and home page
+          localStorage.setItem('products', JSON.stringify(transformed));
+          updateHomePageProducts(transformed);
+          
+          console.log('🔥 HomePage loaded products from backend:', transformed);
+        }
+      })
+      .catch(error => console.log('Backend fetch failed:', error));
+    }
+  }, []);
+
+  // Periodic sync with backend every 30 seconds
+  useEffect(() => {
+    const syncInterval = setInterval(() => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        fetch('http://localhost:5000/api/products', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(response => response.ok ? response.json() : Promise.reject('Failed'))
+        .then(data => {
+          if (data.success && data.data && data.data.length > 0) {
+            const transformed = data.data.map((product: any) => ({
+              id: product._id || product.id,
+              name: product.name || 'Unknown',
+              category: product.category || 'Other',
+              sku: product.sku || '',
+              quantity: product.quantity || 0,
+              price: product.price || 0,
+              minStock: product.minStock || 10,
+              supplier: product.supplier || 'Unknown',
+              status: product.status || 'in-stock',
+              specialOffers: product.specialOffers || false,
+              weeklyDeals: product.weeklyDeals || false,
+              weeklyDealsAddedAt: product.weeklyDealsAddedAt || null,
+            }));
+            
+            // Update localStorage and home page
+            localStorage.setItem('products', JSON.stringify(transformed));
+            updateHomePageProducts(transformed);
+            
+            console.log('🔥 HomePage synced products from backend:', transformed);
+          }
+        })
+        .catch(error => console.log('Periodic sync failed:', error));
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(syncInterval);
   }, []);
 
   // Function to clean up expired weekly deals
@@ -453,7 +529,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Profile Management</p>
                                 <div className="space-y-1">
                                   <Link
-                                    to="/customer-portal"
+                                    to="/customer-portal?section=profile"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setIsDropdownOpen(false);
@@ -464,7 +540,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
                                     <span>My Profile</span>
                                   </Link>
                                   <Link
-                                    to="/customer-portal"
+                                    to="/customer-portal?section=orders"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setIsDropdownOpen(false);
@@ -475,7 +551,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
                                     <span>View Orders</span>
                                   </Link>
                                   <Link
-                                    to="/customer-portal"
+                                    to="/customer-portal?section=wishlist"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setIsDropdownOpen(false);
@@ -496,8 +572,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
                                     setIsDropdownOpen(false);
                                     if (onLogout) {
                                       onLogout();
-                                      // Redirect to login page
-                                      window.location.href = '/login';
+                                      navigate('/login');
                                     }
                                   }}
                                   className="flex items-center gap-3 px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors w-full"
@@ -626,8 +701,7 @@ export default function HomePage({ onLogout }: HomePageProps) {
                                     setIsDropdownOpen(false);
                                     if (onLogout) {
                                       onLogout();
-                                      // Redirect to login page
-                                      window.location.href = '/login';
+                                      navigate('/login');
                                     }
                                   }}
                                   className="flex items-center gap-3 px-3 py-2 text-red-700 hover:bg-red-50 rounded-lg transition-colors w-full"

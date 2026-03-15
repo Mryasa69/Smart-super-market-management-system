@@ -99,9 +99,8 @@ export default function CustomerSignUpPage() {
         return;
       }
 
-      // Save auth info
-      localStorage.setItem('authToken', data.data.token);
-      localStorage.setItem('userRole', data.data.role);
+      // Don't auto-login - just save customer data for future reference
+      // User should manually login after signup
       
       // Save customer details from signup form
       const fullName = `${formData.firstName} ${formData.lastName}`;
@@ -113,8 +112,8 @@ export default function CustomerSignUpPage() {
       localStorage.setItem('customerTier', 'Bronze'); // New customers start as Bronze
       localStorage.setItem('customerJoinDate', currentDate); // Save signup date as join date
 
-      // Redirect to customer portal
-      navigate('/customer-portal');
+      // Redirect to login page for immediate login
+      navigate('/login');
     } catch (error) {
       setErrors({ general: 'Unable to connect to the server. Please try again.' });
     } finally {

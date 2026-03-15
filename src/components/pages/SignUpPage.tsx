@@ -93,9 +93,8 @@ export default function SignUpPage() {
         return;
       }
 
-      // Save auth info for immediate login
-      localStorage.setItem('authToken', data.data.token);
-      localStorage.setItem('userRole', 'customer');
+      // Don't auto-login - just save customer data for future reference
+      // User should manually login after signup
       
       // Save customer details
       const fullName = `${formData.firstName} ${formData.lastName}`;
@@ -136,8 +135,8 @@ export default function SignUpPage() {
       localStorage.setItem('customers', JSON.stringify(customersList));
       console.log('Added new customer to customers list:', newCustomer);
 
-      // Redirect to customer portal
-      navigate('/customer-portal');
+      // Redirect to login page for immediate login
+      navigate('/login');
     } catch (error) {
       setErrors({ general: 'Unable to connect to the server. Please try again.' });
     } finally {

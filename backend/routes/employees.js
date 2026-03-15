@@ -118,7 +118,23 @@ router.post(
 // @access  Private (admin)
 router.put('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const employee = await Employee.findByIdAndUpdate(req.params.id, req.body, {
+    console.log('Updating employee with ID:', req.params.id);
+    console.log('Request body:', req.body);
+    
+    // Only allow updating valid fields
+    const { name, email, phone, role, joinDate, status } = req.body;
+    const updateData = {};
+    
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (role !== undefined) updateData.role = role;
+    if (joinDate !== undefined) updateData.joinDate = joinDate;
+    if (status !== undefined) updateData.status = status;
+    
+    console.log('Filtered update data:', updateData);
+    
+    const employee = await Employee.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true,
     });
@@ -127,8 +143,10 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Employee not found' });
     }
 
+    console.log('Updated employee:', employee);
     res.json({ success: true, data: employee });
   } catch (error) {
+    console.error('Error updating employee:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -168,7 +186,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     // Also delete the associated user account
     await User.findOneAndDelete({ email: employee.email });
     await employee.deleteOne();
-
+    
     res.json({ success: true, message: 'Employee deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

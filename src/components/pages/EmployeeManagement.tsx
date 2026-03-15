@@ -9,7 +9,7 @@ interface EmployeeManagementProps {
 }
 
 interface Employee {
-  id: number;
+  id: string; // Changed to string to match ObjectId
   name: string;
   email: string;
   role: string;
@@ -18,65 +18,10 @@ interface Employee {
   status: 'active' | 'inactive';
   lastLogin: string;
   workingHours: number;
+  password?: string; // Optional password field for editing
 }
 
-const initialEmployees: Employee[] = [
-  {
-    id: 1,
-    name: 'John Doe',
-    email: 'john@smartsuper.lk',
-    role: 'Cashier',
-    phone: '+94 77 123 4567',
-    joinDate: '2024-01-15',
-    status: 'active',
-    lastLogin: '2025-12-10 09:30 AM',
-    workingHours: 168,
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    email: 'jane@smartsuper.lk',
-    role: 'Stock Manager',
-    phone: '+94 77 234 5678',
-    joinDate: '2024-02-20',
-    status: 'active',
-    lastLogin: '2025-12-10 08:45 AM',
-    workingHours: 156,
-  },
-  {
-    id: 3,
-    name: 'Mike Johnson',
-    email: 'mike@smartsuper.lk',
-    role: 'Cashier',
-    phone: '+94 77 345 6789',
-    joinDate: '2024-03-10',
-    status: 'active',
-    lastLogin: '2025-12-10 10:15 AM',
-    workingHours: 144,
-  },
-  {
-    id: 4,
-    name: 'Sarah Williams',
-    email: 'sarah@smartsuper.lk',
-    role: 'Admin',
-    phone: '+94 77 456 7890',
-    joinDate: '2023-11-01',
-    status: 'active',
-    lastLogin: '2025-12-10 07:00 AM',
-    workingHours: 200,
-  },
-  {
-    id: 5,
-    name: 'David Brown',
-    email: 'david@smartsuper.lk',
-    role: 'Cashier',
-    phone: '+94 77 567 8901',
-    joinDate: '2024-06-15',
-    status: 'inactive',
-    lastLogin: '2025-12-05 05:30 PM',
-    workingHours: 88,
-  },
-];
+const initialEmployees: Employee[] = [];
 
 export default function EmployeeManagement({ userRole, onLogout }: EmployeeManagementProps) {
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
@@ -84,6 +29,7 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
   const [filterRole, setFilterRole] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
@@ -95,6 +41,53 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
   const activityTracker = ActivityTracker.getInstance();
 
   const roles = ['all', 'Admin', 'Stock Manager', 'Cashier'];
+
+  // Load employees from backend on mount
+  useEffect(() => {
+    const loadEmployees = async () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:5000/api/employees', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+              const transformedEmployees = data.data.map((emp: any) => ({
+                id: emp._id,
+                name: emp.name,
+                email: emp.email,
+                role: emp.role,
+                phone: emp.phone,
+                joinDate: emp.joinDate ? new Date(emp.joinDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                status: emp.status || 'active',
+                lastLogin: emp.lastLogin ? new Date(emp.lastLogin).toLocaleString() : 'Never',
+                workingHours: emp.workingHours || 0,
+              }));
+              setEmployees(transformedEmployees);
+              localStorage.setItem('employees', JSON.stringify(transformedEmployees));
+            }
+          }
+        } catch (error) {
+          console.log('Failed to load employees from backend, using localStorage');
+          // Fallback to localStorage
+          const storedEmployees = localStorage.getItem('employees');
+          if (storedEmployees) {
+            try {
+              const parsed = JSON.parse(storedEmployees);
+              setEmployees(parsed);
+            } catch (parseError) {
+              console.error('Failed to parse stored employees:', parseError);
+            }
+          }
+        }
+      }
+    };
+
+    loadEmployees();
+  }, []);
 
   // Load employees from localStorage
   useEffect(() => {
@@ -152,7 +145,7 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
       }
 
       const employee: Employee = {
-        id: Math.max(...employees.map(e => e.id), 0) + 1,
+        id: Date.now().toString(), // Generate string ID
         name: newEmployee.name,
         email: newEmployee.email,
         role: newEmployee.role,
@@ -187,7 +180,58 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
     }
   };
 
-  const handleDeleteEmployee = async (id: number) => {
+  const handleUpdateEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingEmployee) return;
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        try {
+          const response = await fetch(`http://localhost:5000/api/employees/${editingEmployee.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              ...editingEmployee,
+              id: undefined // Remove id from body to avoid conflicts
+            }),
+          });
+          
+          if (response.ok) {
+            console.log('Employee updated successfully');
+          } else {
+            console.error('Backend employee update failed:', response.status);
+          }
+        } catch (error) {
+          console.error('Backend employee update failed:', error);
+        }
+      }
+
+      // Always update locally (even if backend failed, to keep UI responsive)
+      const updatedEmployees = employees.map(emp => 
+        emp.id === editingEmployee.id ? editingEmployee : emp
+      );
+      
+      setEmployees(updatedEmployees);
+      localStorage.setItem('employees', JSON.stringify(updatedEmployees));
+      
+      // Log activity
+      activityTracker.logEmployeeUpdated(editingEmployee.name);
+      
+      setEditingEmployee(null);
+      
+      alert('Employee updated successfully!');
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      alert('Failed to update employee');
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
     if (confirm('Are you sure you want to delete this employee?')) {
       const employeeToDelete = employees.find(e => e.id === id);
       
@@ -222,7 +266,7 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
     }
   };
 
-  const handleToggleStatus = (id: number) => {
+  const handleToggleStatus = (id: string) => {
     const updatedEmployees = employees.map((emp) =>
       emp.id === id ? { ...emp, status: emp.status === 'active' ? 'inactive' : 'active' } : emp
     );
@@ -356,7 +400,10 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     <td className="px-6 py-4">{employee.workingHours}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                        <button
+                          onClick={() => setEditingEmployee(employee)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
@@ -374,19 +421,24 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
           </div>
         </div>
 
-        {/* Add Employee Modal */}
-        {showAddModal && (
+        {/* Add/Edit Employee Modal */}
+        {(showAddModal || editingEmployee) && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-              <h2 className="text-gray-800 mb-4">Add New Employee</h2>
-              <form onSubmit={handleAddEmployee} className="space-y-4">
+              <h2 className="text-gray-800 mb-4">
+                {editingEmployee ? 'Edit Employee' : 'Add New Employee'}
+              </h2>
+              <form onSubmit={editingEmployee ? handleUpdateEmployee : handleAddEmployee} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700 mb-2">Full Name</label>
                     <input
                       type="text"
-                      value={newEmployee.name}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })}
+                      value={editingEmployee ? editingEmployee.name : newEmployee.name}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, name: e.target.value}) :
+                        setNewEmployee({...newEmployee, name: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter full name"
                       required
@@ -396,8 +448,11 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     <label className="block text-gray-700 mb-2">Email</label>
                     <input
                       type="email"
-                      value={newEmployee.email}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                      value={editingEmployee ? editingEmployee.email : newEmployee.email}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, email: e.target.value}) :
+                        setNewEmployee({...newEmployee, email: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter email"
                       required
@@ -407,8 +462,11 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     <label className="block text-gray-700 mb-2">Phone</label>
                     <input
                       type="tel"
-                      value={newEmployee.phone}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                      value={editingEmployee ? editingEmployee.phone : newEmployee.phone}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, phone: e.target.value}) :
+                        setNewEmployee({...newEmployee, phone: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter phone number"
                       required
@@ -417,8 +475,11 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                   <div>
                     <label className="block text-gray-700 mb-2">Role</label>
                     <select 
-                      value={newEmployee.role}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, role: e.target.value })}
+                      value={editingEmployee ? editingEmployee.role : newEmployee.role}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, role: e.target.value}) :
+                        setNewEmployee({...newEmployee, role: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
                       {roles.filter((r) => r !== 'all').map((role) => (
@@ -430,8 +491,11 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     <label className="block text-gray-700 mb-2">Join Date</label>
                     <input
                       type="date"
-                      value={newEmployee.joinDate}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, joinDate: e.target.value })}
+                      value={editingEmployee ? editingEmployee.joinDate : newEmployee.joinDate}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, joinDate: e.target.value}) :
+                        setNewEmployee({...newEmployee, joinDate: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       required
                     />
@@ -440,18 +504,24 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     <label className="block text-gray-700 mb-2">Initial Password</label>
                     <input
                       type="password"
-                      value={newEmployee.password}
-                      onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                      value={editingEmployee ? editingEmployee.password || '' : newEmployee.password}
+                      onChange={(e) => editingEmployee ? 
+                        setEditingEmployee({...editingEmployee, password: e.target.value}) :
+                        setNewEmployee({...newEmployee, password: e.target.value})
+                      }
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter initial password"
-                      required
+                      required={editingEmployee ? false : true}
                     />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end mt-6">
                   <button
                     type="button"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingEmployee(null);
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
                     Cancel
@@ -460,7 +530,7 @@ export default function EmployeeManagement({ userRole, onLogout }: EmployeeManag
                     type="submit"
                     className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
                   >
-                    Add Employee
+                    {editingEmployee ? 'Update Employee' : 'Add Employee'}
                   </button>
                 </div>
               </form>

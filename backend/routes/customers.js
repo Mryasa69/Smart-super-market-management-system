@@ -4,6 +4,47 @@ const { body, validationResult } = require('express-validator');
 const Customer = require('../models/Customer');
 const { protect, authorize } = require('../middleware/auth');
 
+// @route   GET /api/customers/me
+// @desc    Get current customer profile (for logged-in customers)
+// @access  Private
+router.get('/me', protect, async (req, res) => {
+  try {
+    // For customers, find by email from user token
+    if (req.user.role === 'customer') {
+      let customer = await Customer.findOne({ email: req.user.email });
+      
+      // If no customer record exists, create one from user data
+      if (!customer) {
+        const fullName = `${req.user.firstName} ${req.user.lastName}`;
+        customer = await Customer.create({
+          name: fullName,
+          email: req.user.email,
+          phone: '+94 11 234 5678', // Default phone number since it's required
+          loyaltyPoints: 0,
+          totalPurchases: 0,
+          tier: 'Bronze'
+        });
+      }
+      
+      return res.json({ success: true, data: customer });
+    }
+    
+    // For other roles, return user info
+    res.json({ 
+      success: true, 
+      data: {
+        _id: req.user._id,
+        name: `${req.user.firstName} ${req.user.lastName}`,
+        email: req.user.email,
+        role: req.user.role
+      }
+    });
+  } catch (error) {
+    console.error('Error in /api/customers/me:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // @route   GET /api/customers
 // @desc    Get all customers with filters
 // @access  Private

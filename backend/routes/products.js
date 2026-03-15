@@ -109,7 +109,7 @@ router.post(
         return res.status(400).json({ success: false, message: 'A product with this SKU already exists' });
       }
 
-      const product = await Product.create({
+      const productData = {
         name,
         category,
         sku,
@@ -118,10 +118,16 @@ router.post(
         minStock: minStock || 10,
         supplier: supplier || '',
         barcode: barcode || sku,
-        specialOffers: specialOffers === true,
-        weeklyDeals: weeklyDeals === true,
-        weeklyDealsAddedAt: weeklyDeals === true ? new Date() : null,
-      });
+        specialOffers: specialOffers || false,
+        weeklyDeals: weeklyDeals || false,
+      };
+
+      // Add weeklyDealsAddedAt timestamp if weeklyDeals is true
+      if (weeklyDeals) {
+        productData.weeklyDealsAddedAt = new Date();
+      }
+
+      const product = await Product.create(productData);
 
       res.status(201).json({ success: true, data: product });
     } catch (error) {
@@ -152,18 +158,16 @@ router.put('/:id', protect, authorize('admin', 'stock_manager'), async (req, res
     product.barcode = barcode !== undefined ? barcode : product.barcode;
     product.specialOffers = specialOffers !== undefined ? specialOffers : product.specialOffers;
     
-    // Handle weeklyDeals and timestamp logic
+    // Handle weeklyDeals and timestamp
     if (weeklyDeals !== undefined) {
-      if (weeklyDeals === true && product.weeklyDeals !== true) {
-        // Product is being added to weekly deals for the first time
-        product.weeklyDeals = true;
+      product.weeklyDeals = weeklyDeals;
+      if (weeklyDeals && !product.weeklyDealsAddedAt) {
+        // If weeklyDeals is being set to true and no timestamp exists, add one
         product.weeklyDealsAddedAt = new Date();
-      } else if (weeklyDeals === false) {
-        // Product is being removed from weekly deals
-        product.weeklyDeals = false;
+      } else if (!weeklyDeals) {
+        // If weeklyDeals is being set to false, clear the timestamp
         product.weeklyDealsAddedAt = null;
       }
-      // If weeklyDeals is true and was already true, don't change the timestamp
     }
 
     await product.save(); // This triggers the pre-save hook for status
@@ -192,43 +196,32 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
 });
 
 // @route   POST /api/products/cleanup-weekly-deals
-// @desc    Remove products from weekly deals after 7 days
-// @access  Private (admin, stock_manager)
-router.post('/cleanup-weekly-deals', protect, authorize('admin', 'stock_manager'), async (req, res) => {
+// @desc    Remove expired weekly deals (older than 7 days)
+// @access  Private (all roles can trigger this)
+router.post('/cleanup-weekly-deals', protect, async (req, res) => {
   try {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Find all products that have been in weekly deals for more than 7 days
     const expiredDeals = await Product.find({
       weeklyDeals: true,
       weeklyDealsAddedAt: { $lt: sevenDaysAgo }
     });
 
-    // Remove expired weekly deals
-    const result = await Product.updateMany(
+    const removedProducts = await Product.updateMany(
       {
         weeklyDeals: true,
         weeklyDealsAddedAt: { $lt: sevenDaysAgo }
       },
       {
-        $set: {
-          weeklyDeals: false,
-          weeklyDealsAddedAt: null
-        }
+        $unset: { weeklyDeals: 1, weeklyDealsAddedAt: 1 }
       }
     );
 
-    console.log(`Cleaned up ${result.modifiedCount} expired weekly deals`);
-
     res.json({
       success: true,
-      message: `Removed ${result.modifiedCount} products from weekly deals`,
-      removedProducts: expiredDeals.map(p => ({
-        id: p._id,
-        name: p.name,
-        daysInWeeklyDeals: Math.floor((new Date() - p.weeklyDealsAddedAt) / (1000 * 60 * 60 * 24))
-      }))
+      message: `Cleaned up ${removedProducts.modifiedCount} expired weekly deals`,
+      removedProducts: expiredDeals.map(p => ({ id: p._id, name: p.name }))
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
