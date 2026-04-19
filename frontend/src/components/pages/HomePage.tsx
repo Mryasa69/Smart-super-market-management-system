@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const categories = [
   { name: 'Fruits & Vegetables', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop' },
@@ -32,6 +33,8 @@ const weeklyDeals = [
 ];
 
 export default function HomePage() {
+
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [addedToCart, setAddedToCart] = useState<number | null>(null);
@@ -74,32 +77,43 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAddToCart = (productId: number, productName: string) => {
-    setCartCount(prev => prev + 1);
-    setAddedToCart(productId);
-    
-    // Show success message
-    const message = document.createElement('div');
-    message.className = 'fixed top-24 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
-    message.innerHTML = `
-      <div class="flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        <span>${productName} added to cart!</span>
-      </div>
-    `;
-    document.body.appendChild(message);
-    
-    setTimeout(() => {
-      message.remove();
-    }, 3000);
-    
-    // Reset button state after 2 seconds
-    setTimeout(() => {
-      setAddedToCart(null);
-    }, 2000);
-  };
+const handleAddToCart = (
+  productId: number,
+  productName: string,
+  productPrice: string,
+  productImage: string
+) => {
+  setCartCount(prev => prev + 1);
+  setAddedToCart(productId);
+
+  // ✅ Get existing cart
+  const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+  // ✅ Check if item already exists
+  const itemIndex = existingCart.findIndex((item: any) => item.id === productId);
+
+  if (itemIndex !== -1) {
+    // already in cart → increase quantity
+    existingCart[itemIndex].quantity += 1;
+  } else {
+    // add new item
+    existingCart.push({
+      id: productId,
+      name: productName,
+      price: parseFloat(productPrice.replace(/[^0-9]/g, "")), // convert Rs string → number
+      pricePerKg: productPrice,
+      image: productImage,
+      quantity: 1
+    });
+  }
+
+  // ✅ Save to localStorage
+  localStorage.setItem("cart", JSON.stringify(existingCart));
+
+  // UI effects (same as yours)
+  setTimeout(() => setAddedToCart(null), 2000);
+};
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -155,12 +169,15 @@ export default function HomePage() {
             </div>
 
             {/* Right Side Icons */}
+
+            
             <div className="flex items-center gap-6">
-              <Link to="/login" className="flex flex-col items-center gap-1 hover:text-green-700">
+              <Link to="/profile" className="flex flex-col items-center gap-1 hover:text-green-700">
                 <User className="w-6 h-6" />
                 <span className="text-sm">Account</span>
               </Link>
-              <button className="flex flex-col items-center gap-1 relative hover:text-green-700">
+              <button onClick={() => navigate('/cart')}  className="flex flex-col items-center gap-1 relative hover:text-green-700"
+>
                 <ShoppingCart className="w-6 h-6" />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -259,7 +276,7 @@ export default function HomePage() {
                   <p className="text-green-700 mb-3">{product.price}</p>
                   <button 
                     className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                    onClick={() => handleAddToCart(product.id, product.name)}
+                    onClick={() => handleAddToCart( product.id, product.name, product.price,  product.image )}
                     disabled={addedToCart === product.id}
                   >
                     {addedToCart === product.id ? 'Added!' : 'Add to Cart'}
@@ -301,7 +318,7 @@ export default function HomePage() {
                         ? 'bg-green-800' 
                         : 'bg-green-600 hover:bg-green-700 hover:scale-105'
                     }`}
-                    onClick={() => handleAddToCart(deal.id + 100, deal.name)}
+                    onClick={() => handleAddToCart( deal.id + 100, deal.name, deal.salePrice, deal.image )}
                     disabled={addedToCart === deal.id + 100}
                   >
                     {addedToCart === deal.id + 100 ? (
