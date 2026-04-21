@@ -11,6 +11,7 @@ import POSSystem from "./components/pages/POSSystem";
 import EmployeeManagement from "./components/pages/EmployeeManagement";
 import CustomerManagement from "./components/pages/CustomerManagement";
 import ReportsAnalytics from "./components/pages/ReportsAnalytics";
+import ShoppingCart from './components/pages/ShoppingCart';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           throw new Error("Function not implemented.");
         } } />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/cart" element={<ShoppingCart />} />
 
         {/* Admin pages */}
         <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
