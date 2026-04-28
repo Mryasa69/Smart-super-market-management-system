@@ -172,7 +172,7 @@ const handleAddToCart = (
 
             
             <div className="flex items-center gap-6">
-              <Link to="/profile" className="flex flex-col items-center gap-1 hover:text-green-700">
+              <Link to="/login" className="flex flex-col items-center gap-1 hover:text-green-700">
                 <User className="w-6 h-6" />
                 <span className="text-sm">Account</span>
               </Link>
