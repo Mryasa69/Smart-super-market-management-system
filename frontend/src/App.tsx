@@ -12,6 +12,9 @@ import EmployeeManagement from "./components/pages/EmployeeManagement";
 import CustomerManagement from "./components/pages/CustomerManagement";
 import ReportsAnalytics from "./components/pages/ReportsAnalytics";
 import ShoppingCart from './components/pages/ShoppingCart';
+import  Profile  from "./components/pages/Profile";
+import ProfileEdit  from "./components/pages/ProfileEdit";
+
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
         } } />} />
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/cart" element={<ShoppingCart />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/edit" element={<ProfileEdit />} />
+        
 
         {/* Admin pages */}
         <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
