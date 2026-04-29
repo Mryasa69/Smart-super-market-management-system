@@ -14,6 +14,9 @@ import ReportsAnalytics from "./components/pages/ReportsAnalytics";
 import ShoppingCart from './components/pages/ShoppingCart';
 import  Profile  from "./components/pages/Profile";
 import ProfileEdit  from "./components/pages/ProfileEdit";
+import { OrderDetails } from "./components/pages/OrderDetails";
+import { OrderHistory } from "./components/pages/OrderHistory";
+import { OrderSuccess } from "./components/pages/OrderSuccess";
 
 
 function App() {
@@ -29,6 +32,9 @@ function App() {
         <Route path="/cart" element={<ShoppingCart />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
+        <Route path="/orders/:orderId" element={<OrderDetails />} />
+        <Route path="/orders" element={<OrderHistory />} />
+        <Route path="/order-success" element={<OrderSuccess />} />
         
 
         {/* Admin pages */}
