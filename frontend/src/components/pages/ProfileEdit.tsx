@@ -42,26 +42,33 @@ export default function ProfileEdit() {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-center gap-4 mb-6 relative">
+      <div className="flex items-center justify-between mb-6">
+        {/* Left: Continue Shopping */}
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 absolute left-0"
+          className="flex items-center gap-2 text-green-600"
         >
-          <ArrowLeft className="w-5 h-5" />
-          Continue Shopping
+          ← Continue Shopping
         </button>
-        <div className="flex items-center gap-2">
-          <CartIcon className="w-6 h-6 text-gray-600" />
-          <h1 className="text-xl">Shopping Cart</h1>
-        </div>
-        <Link
-          to="/orders"
-          className="text-gray-600 hover:text-gray-900 absolute right-0"
-        >
-          Cart Orders
-        </Link>
-      </div>
 
+        {/* Center: Shopping Cart */}
+        <button
+          onClick={() => navigate("/cart")}
+          className="flex items-center gap-2 text-green-600"
+        >
+          🛒 Shopping Cart
+        </button>
+
+
+        <div className="flex items-center gap-4">
+          <Link to="/cart"  className="flex items-center gap-2 text-green-600">
+            Cart
+          </Link>
+          <Link to="/orders"  className="flex items-center gap-2 text-green-600">
+            Orders
+          </Link>
+        </div>
+      </div>
       <Card className="bg-green-600 text-white p-6 rounded-2xl mb-6">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center">
