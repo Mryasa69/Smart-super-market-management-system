@@ -37,7 +37,6 @@ function App() {
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/about" element={<AboutUsPage />} />
-        
 
         {/* Admin pages */}
         <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
