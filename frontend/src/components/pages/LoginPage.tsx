@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { apiService } from '../../services/api';
 
 interface LoginPageProps {
-  onLogin: (role: 'admin' | 'cashier' | 'stock_manager') => void;
+  onLogin: (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => void;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -14,8 +15,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -24,10 +28,51 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       return;
     }
 
-    // For demo purposes, automatically log in as admin
-    // In a real application, this would validate against a database
-    onLogin('admin');
-    navigate('/dashboard');
+    setIsLoading(true);
+
+    try {
+      // Clear any existing sessions
+      apiService.clearAllAuth();
+      
+      // Try staff login first
+      let response = await apiService.staffLogin(formData);
+      
+      if (response.success && response.data && response.data.token) {
+        // Staff login successful
+        apiService.saveAuthData(response.data.token, response.data);
+        
+        const role = response.data.role;
+        onLogin(role);
+
+        // Redirect based on role
+        if (role === 'admin') navigate('/dashboard');
+        else if (role === 'cashier') navigate('/pos');
+        else if (role === 'stock_manager') navigate('/inventory');
+        else if (role === 'customer') navigate('/customer-dashboard');
+        else {
+          // For any successful login, redirect to home page
+          navigate('/');
+        }
+      } else {
+        // Try customer login if staff login failed
+        response = await apiService.customerLogin(formData);
+        
+        if (response.success && response.data && response.data.token) {
+          // Customer login successful
+          apiService.saveCustomerAuthData(response.data.token, response.data.customer);
+          
+          onLogin('customer');
+          navigate('/');
+          navigate('/customer-dashboard');
+        } else {
+          setError(response.message || 'Invalid email or password');
+        }
+      }
+    } catch (error) {
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,8 +91,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         {/* Login Form */}
         <div className="bg-white rounded-lg shadow-xl p-8">
-          <h2 className="text-gray-800 mb-2 text-center">Welcome Back</h2>
-          <p className="text-gray-600 text-center mb-6">Log in to your account</p>
+          <h2 className="text-red-700 mb-2 text-center font-bold">LOGIN</h2>
+          <p className="text-gray-600 text-center mb-6">Staff & Customer Access</p>
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -115,9 +160,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             {/* Log In Button */}
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors"
+              disabled={isLoading}
+              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Log In
+              {isLoading ? 'Logging In...' : 'Log In'}
             </button>
           </form>
 

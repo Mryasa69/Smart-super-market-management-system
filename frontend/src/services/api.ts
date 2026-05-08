@@ -1,0 +1,316 @@
+export type ApiResponse<T = any> = {
+  success: boolean;
+  message?: string;
+  data?: T;
+};
+
+// ---- Data types used by your pages ----
+export type Product = {
+  _id: string;
+  name: string;
+  category: string;
+  sku: string;
+  quantity: number;
+  price: number;
+  minStock: number;
+  supplier: string;
+  status: 'in-stock' | 'low-stock' | 'out-of-stock' | string;
+  barcode?: string;
+  specialOffers?: boolean;
+  weeklyDeals?: boolean;
+  image?: string;
+};
+
+export type Supplier = {
+  _id: string;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address?: string;
+  category: string;
+  rating?: number;
+  totalOrders?: number;
+  activeOrders?: number;
+  lastDelivery?: string | Date | null;
+  status: 'active' | 'inactive' | string;
+};
+
+export type Employee = {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'cashier' | 'stock_manager' | string;
+  phone: string;
+  joinDate: string | Date;
+  status: 'active' | 'inactive' | string;
+  lastLogin?: string | Date | null;
+};
+
+export type PurchaseOrder = {
+  _id: string;
+  supplierId: any;
+  orderDate: string | Date;
+  expectedDelivery: string | Date;
+  status: 'pending' | 'confirmed' | 'delivered' | 'cancelled' | string;
+  totalAmount: number;
+  // Backend model uses `items` as a number (count of items).
+  items?: number;
+  // Frontend UI sometimes expects `itemCount` (derive/ignore mismatch later).
+  itemCount?: number;
+  notes?: string;
+};
+
+type AuthUser = {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role: 'admin' | 'cashier' | 'stock_manager' | 'customer';
+};
+
+const API_BASE_URL = 'http://localhost:5000';
+
+async function parseJsonSafe(res: Response) {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
+}
+
+const apiService = {
+  getStoredToken(): string | null {
+    return localStorage.getItem('token');
+  },
+
+  getStoredUser(): AuthUser | null {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as AuthUser;
+    } catch {
+      return null;
+    }
+  },
+
+  saveAuthData(token: string, user: AuthUser) {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+  },
+
+  saveCustomerAuthData(token: string, customer: any) {
+    localStorage.setItem('customerToken', token);
+    localStorage.setItem('customer', JSON.stringify(customer));
+  },
+
+  logout() {
+    this.clearAllAuth();
+  },
+
+  clearAllAuth() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('customerToken');
+    localStorage.removeItem('customer');
+    localStorage.removeItem('rememberCustomer');
+    localStorage.removeItem('customerProfile');
+  },
+
+  privateHeaders(): Record<string, string> {
+    const token = apiService.getStoredToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  },
+
+  async staffLogin(formData: { email: string; password: string }): Promise<ApiResponse<AuthUser & { token?: string }>> {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async customerLogin(formData: { email: string; password: string }): Promise<ApiResponse<{ customer: any; token: string }>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async getDashboardData(): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/dashboard`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async getProducts(): Promise<ApiResponse<Product[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Product[]>;
+  },
+
+  async createProduct(payload: any): Promise<ApiResponse<Product>> {
+    const res = await fetch(`${API_BASE_URL}/api/products`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Product>;
+  },
+
+  async updateProduct(id: string, payload: any): Promise<ApiResponse<Product>> {
+    const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Product>;
+  },
+
+  async deleteProduct(id: string): Promise<ApiResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+      method: 'DELETE',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse;
+  },
+
+  async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/suppliers`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Supplier[]>;
+  },
+
+  async createSupplier(payload: any): Promise<ApiResponse<Supplier>> {
+    const res = await fetch(`${API_BASE_URL}/api/suppliers`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Supplier>;
+  },
+
+  async updateSupplier(id: string, payload: any): Promise<ApiResponse<Supplier>> {
+    const res = await fetch(`${API_BASE_URL}/api/suppliers/${id}`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Supplier>;
+  },
+
+  async deleteSupplier(id: string): Promise<ApiResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/suppliers/${id}`, {
+      method: 'DELETE',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse;
+  },
+
+  async getEmployees(): Promise<ApiResponse<Employee[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/employees`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Employee[]>;
+  },
+
+  async createEmployee(payload: any): Promise<ApiResponse<Employee>> {
+    const res = await fetch(`${API_BASE_URL}/api/employees`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Employee>;
+  },
+
+  async updateEmployee(id: string, payload: any): Promise<ApiResponse<Employee>> {
+    const res = await fetch(`${API_BASE_URL}/api/employees/${id}`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<Employee>;
+  },
+
+  async deleteEmployee(id: string): Promise<ApiResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/employees/${id}`, {
+      method: 'DELETE',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse;
+  },
+
+  async getPurchaseOrders(): Promise<ApiResponse<PurchaseOrder[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/purchase-orders`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<PurchaseOrder[]>;
+  },
+
+  async createPurchaseOrder(payload: any): Promise<ApiResponse<PurchaseOrder>> {
+    const res = await fetch(`${API_BASE_URL}/api/purchase-orders`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<PurchaseOrder>;
+  },
+
+  async updatePurchaseOrder(id: string, payload: any): Promise<ApiResponse<PurchaseOrder>> {
+    const res = await fetch(`${API_BASE_URL}/api/purchase-orders/${id}`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<PurchaseOrder>;
+  },
+
+  async deletePurchaseOrder(id: string): Promise<ApiResponse> {
+    const res = await fetch(`${API_BASE_URL}/api/purchase-orders/${id}`, {
+      method: 'DELETE',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse;
+  },
+};
+
+export { apiService };
+
