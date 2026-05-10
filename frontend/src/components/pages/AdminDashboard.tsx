@@ -1,44 +1,92 @@
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
-import { Package, ShoppingCart, Users, TrendingUp, AlertTriangle, DollarSign } from 'lucide-react';
+import { Package, ShoppingCart, Users, TrendingUp, AlertTriangle, DollarSign, Clock, User, Plus, Edit, Trash2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { apiService } from '../../services/api';
 
 interface AdminDashboardProps {
   userRole: 'admin' | 'cashier' | 'stock_manager' | null;
   onLogout: () => void;
 }
 
-const salesData = [
-  { month: 'Jan', sales: 45000, profit: 12000 },
-  { month: 'Feb', sales: 52000, profit: 15000 },
-  { month: 'Mar', sales: 48000, profit: 13500 },
-  { month: 'Apr', sales: 61000, profit: 18000 },
-  { month: 'May', sales: 55000, profit: 16500 },
-  { month: 'Jun', sales: 67000, profit: 20000 },
-];
-
-const topProducts = [
-  { name: 'Fresh Milk 1L', sold: 450, revenue: 'Rs. 126,000' },
-  { name: 'White Bread', sold: 380, revenue: 'Rs. 45,600' },
-  { name: 'Chicken 1kg', sold: 320, revenue: 'Rs. 272,000' },
-  { name: 'Rice 5kg', sold: 290, revenue: 'Rs. 174,000' },
-  { name: 'Fresh Apples', sold: 265, revenue: 'Rs. 119,250' },
-];
-
-const lowStockItems = [
-  { name: 'Tomatoes', current: 15, minimum: 50, status: 'critical' },
-  { name: 'Eggs (Dozen)', current: 25, minimum: 100, status: 'low' },
-  { name: 'Orange Juice', current: 30, minimum: 75, status: 'low' },
-  { name: 'Butter 500g', current: 8, minimum: 40, status: 'critical' },
-];
-
-const recentActivities = [
-  { time: '10 mins ago', action: 'New sale completed', amount: 'Rs. 2,450', user: 'Cashier 1' },
-  { time: '25 mins ago', action: 'Stock updated', amount: '150 items', user: 'Stock Manager' },
-  { time: '1 hour ago', action: 'New supplier added', amount: 'ABC Foods Ltd', user: 'Admin' },
-  { time: '2 hours ago', action: 'Employee checked in', amount: 'John Doe', user: 'System' },
-];
 
 export default function AdminDashboard({ userRole, onLogout }: AdminDashboardProps) {
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+    
+    // Set up interval to refresh dashboard data every 30 seconds
+    const interval = setInterval(() => {
+      loadDashboardData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getDashboardData();
+      if (response.success && response.data) {
+        setDashboardData(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout userRole={userRole} onLogout={onLogout}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-600">Loading dashboard...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Use real API data with fallbacks
+  const salesData = dashboardData?.salesData || [];
+  const topProducts = dashboardData?.topProducts || [];
+  const lowStockItems = dashboardData?.lowStockItems || [];
+  const recentActivities = dashboardData?.recentActivities || [];
+  const stats = dashboardData?.stats || {};
+  const todayTotalSales = dashboardData?.todayTotalSales || 0;
+  const todayOrderCount = dashboardData?.todayOrderCount || 0;
+  const salesChange = dashboardData?.salesChange || 0;
+
+  // Helper functions for formatting
+  const formatCurrency = (amount: number) => `Rs. ${amount.toLocaleString()}`;
+  const formatPercentage = (change: number) => {
+    const sign = change >= 0 ? '+' : '';
+    return `${sign}${change}%`;
+  };
+  const getStockStatusColor = (status: string) => {
+    switch (status) {
+      case 'critical': return 'bg-red-200 text-red-800';
+      case 'low': return 'bg-orange-200 text-orange-800';
+      default: return 'bg-gray-200 text-gray-800';
+    }
+  };
+  const getProgressBarColor = (status: string) => {
+    switch (status) {
+      case 'critical': return 'bg-red-500';
+      case 'low': return 'bg-orange-500';
+      default: return 'bg-gray-500';
+    }
+  };
+  const getActivityIcon = (action: string) => {
+    if (action.includes('sale')) return <ShoppingCart className="w-4 h-4 text-blue-600" />;
+    if (action.includes('product') || action.includes('stock')) return <Package className="w-4 h-4 text-green-600" />;
+    if (action.includes('employee')) return <User className="w-4 h-4 text-purple-600" />;
+    if (action.includes('supplier')) return <Plus className="w-4 h-4 text-orange-600" />;
+    return <Clock className="w-4 h-4 text-gray-600" />;
+  };
+
   return (
     <DashboardLayout userRole={userRole} onLogout={onLogout}>
       <div className="space-y-6">
@@ -54,8 +102,10 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 mb-1">Total Sales Today</p>
-                <h2 className="text-gray-800">Rs. 45,230</h2>
-                <p className="text-green-600 text-sm mt-2">+12.5% from yesterday</p>
+                <h2 className="text-gray-800">{formatCurrency(todayTotalSales)}</h2>
+                <p className={`${salesChange >= 0 ? 'text-green-600' : 'text-red-600'} text-sm mt-2`}>
+                  {formatPercentage(salesChange)} from yesterday
+                </p>
               </div>
               <div className="bg-blue-100 p-3 rounded-full">
                 <DollarSign className="w-8 h-8 text-blue-600" />
@@ -67,8 +117,8 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 mb-1">Total Products</p>
-                <h2 className="text-gray-800">1,245</h2>
-                <p className="text-green-600 text-sm mt-2">+23 new items</p>
+                <h2 className="text-gray-800">{stats.totalProducts || 0}</h2>
+                <p className="text-green-600 text-sm mt-2">{stats.lowStockCount || 0} low stock items</p>
               </div>
               <div className="bg-green-100 p-3 rounded-full">
                 <Package className="w-8 h-8 text-green-600" />
@@ -80,8 +130,8 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 mb-1">Total Customers</p>
-                <h2 className="text-gray-800">3,567</h2>
-                <p className="text-green-600 text-sm mt-2">+145 this month</p>
+                <h2 className="text-gray-800">{stats.totalCustomers || 0}</h2>
+                <p className="text-green-600 text-sm mt-2">Active customers</p>
               </div>
               <div className="bg-purple-100 p-3 rounded-full">
                 <Users className="w-8 h-8 text-purple-600" />
@@ -93,8 +143,8 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 mb-1">Orders Today</p>
-                <h2 className="text-gray-800">182</h2>
-                <p className="text-green-600 text-sm mt-2">+8.2% from yesterday</p>
+                <h2 className="text-gray-800">{todayOrderCount}</h2>
+                <p className="text-green-600 text-sm mt-2">{stats.pendingOrders || 0} pending orders</p>
               </div>
               <div className="bg-orange-100 p-3 rounded-full">
                 <ShoppingCart className="w-8 h-8 text-orange-600" />
@@ -166,13 +216,11 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
               <h3 className="text-gray-800">Low Stock Alerts</h3>
             </div>
             <div className="space-y-3">
-              {lowStockItems.map((item, index) => (
+              {lowStockItems.length > 0 ? lowStockItems.map((item, index) => (
                 <div key={index} className="p-3 bg-red-50 border-l-4 border-red-500 rounded">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-gray-800">{item.name}</p>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      item.status === 'critical' ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs ${getStockStatusColor(item.status)}`}>
                       {item.status.toUpperCase()}
                     </span>
                   </div>
@@ -182,14 +230,17 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
                   </div>
                   <div className="mt-2 bg-gray-200 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${
-                        item.status === 'critical' ? 'bg-red-500' : 'bg-orange-500'
-                      }`}
-                      style={{ width: `${(item.current / item.minimum) * 100}%` }}
+                      className={`h-2 rounded-full ${getProgressBarColor(item.status)}`}
+                      style={{ width: `${Math.min((item.current / item.minimum) * 100, 100)}%` }}
                     />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                  <p>No low stock items</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -198,15 +249,27 @@ export default function AdminDashboard({ userRole, onLogout }: AdminDashboardPro
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h3 className="text-gray-800 mb-4">Recent Activities</h3>
           <div className="space-y-3">
-            {recentActivities.map((activity, index) => (
+            {recentActivities.length > 0 ? recentActivities.map((activity, index) => (
               <div key={index} className="flex items-center justify-between p-4 border-b last:border-0">
-                <div>
-                  <p className="text-gray-800">{activity.action}</p>
-                  <p className="text-sm text-gray-500">{activity.time} • {activity.user}</p>
+                <div className="flex items-center gap-3">
+                  <div className="bg-gray-100 p-2 rounded-full">
+                    {getActivityIcon(activity.action)}
+                  </div>
+                  <div>
+                    <p className="text-gray-800">{activity.action}</p>
+                    <p className="text-sm text-gray-500">{activity.time} • {activity.user}</p>
+                  </div>
                 </div>
-                <p className="text-gray-700">{activity.amount}</p>
+                <div className="text-right">
+                  <p className="text-gray-700 font-medium">{activity.amount}</p>
+                </div>
               </div>
-            ))}
+            )) : (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                <p>No recent activities</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

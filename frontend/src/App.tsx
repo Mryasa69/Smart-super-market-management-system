@@ -1,8 +1,12 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 import HomePage from "./components/pages/HomePage";
 import LoginPage from "./components/pages/LoginPage";
 import SignUpPage from "./components/pages/SignUpPage";
+import CustomerRegister from "./components/pages/CustomerRegister";
+import CustomerLogin from "./components/pages/CustomerLogin";
+import CustomerDashboard from "./components/pages/CustomerDashboard";
 
 import AdminDashboard from "./components/pages/AdminDashboard";
 import InventoryManagement from "./components/pages/InventoryManagement";
@@ -17,19 +21,62 @@ import ProfileEdit  from "./components/pages/ProfileEdit";
 import { OrderDetails } from "./components/pages/OrderDetails";
 import { OrderHistory } from "./components/pages/OrderHistory";
 import { OrderSuccess } from "./components/pages/OrderSuccess";
+import { apiService } from "./services/api";
 import AboutUsPage from "./components/pages/AboutUsPage";
 
 
 function App() {
+  const [userRole, setUserRole] = useState<'admin' | 'cashier' | 'stock_manager' | 'customer' | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+
+  useEffect(() => {
+    const token = apiService.getStoredToken();
+    const user = apiService.getStoredUser();
+    
+    if (token && user) {
+      setUserRole(user.role);
+    } else {
+      const customerToken = localStorage.getItem('customerToken');
+      const customer = localStorage.getItem('customer');
+      if (customerToken && customer) {
+        setUserRole('customer');
+      }
+    }
+    setIsLoading(false);
+  }, []);
+
+  const handleLogin = (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => {
+    setUserRole(role);
+  };
+
+  const isEmployeeRole = userRole === 'admin' || userRole === 'cashier' || userRole === 'stock_manager';
+
+  const handleLogout = () => {
+    // Clear all browser storage and logout
+    apiService.logout();
+    setUserRole(null);
+    
+    // Force hard redirect to login page
+    window.location.replace('/login');
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
   return (
-    <BrowserRouter>
+
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage onLogin={function (role: "admin" | "cashier" | "stock_manager"): void {
-          throw new Error("Function not implemented.");
-        } } />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/customer-register" element={<CustomerRegister />} />
+        <Route path="/customer-dashboard" element={
+          userRole === 'customer' ? <CustomerDashboard /> : <Navigate to="/login" />
+        } />
         <Route path="/cart" element={<ShoppingCart />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<ProfileEdit />} />
@@ -38,30 +85,40 @@ function App() {
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/about" element={<AboutUsPage />} />
 
-        {/* Admin pages */}
-        <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/inventory" element={<InventoryManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/suppliers" element={<SupplierManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/pos" element={<POSSystem userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/employees" element={<EmployeeManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/customers" element={<CustomerManagement userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
-        <Route path="/reports" element={<ReportsAnalytics userRole={null} onLogout={function (): void {
-          throw new Error("Function not implemented.");
-        } } />} />
+        {/* Protected pages */}
+        <Route path="/dashboard" element={
+          isEmployeeRole ? <AdminDashboard userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/inventory" element={
+          isEmployeeRole ? <InventoryManagement userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/suppliers" element={
+          isEmployeeRole ? <SupplierManagement userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/pos" element={
+          isEmployeeRole ? <POSSystem userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/employees" element={
+          isEmployeeRole ? <EmployeeManagement userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/customers" element={
+          isEmployeeRole ? <CustomerManagement userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        <Route path="/reports" element={
+          isEmployeeRole ? <ReportsAnalytics userRole={userRole} onLogout={handleLogout} /> :
+          <Navigate to="/login" />
+        } />
+        
+        {/* Catch-all route for unmatched paths */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+
   );
 }
 

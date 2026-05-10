@@ -16,6 +16,26 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    if (!/[A-Z]/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/[a-z]/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/\d/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
+      return 'Password must contain at least one special character';
+    }
+    return '';
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -36,8 +56,11 @@ export default function SignUpPage() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else {
+      const passwordError = validatePassword(formData.password);
+      if (passwordError) {
+        newErrors.password = passwordError;
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -52,13 +75,46 @@ export default function SignUpPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (validateForm()) {
-      // Simulate successful registration
-      alert('Registration successful! Please login with your credentials.');
-      navigate('/login');
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+          nic: formData.nic,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        alert('Registration successful! Please login with your credentials.');
+        navigate('/login');
+      } else {
+        const apiError =
+          data.message ||
+          (Array.isArray(data.errors) && data.errors.length > 0 ? data.errors[0].msg : '') ||
+          'Registration failed';
+        setErrors((prev) => ({ ...prev, general: apiError }));
+      }
+    } catch (error) {
+      setErrors((prev) => ({ ...prev, general: 'Network error. Please try again.' }));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -80,6 +136,12 @@ export default function SignUpPage() {
         <div className="bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-gray-800 mb-2 text-center">Create Account</h2>
           <p className="text-gray-600 text-center mb-6">Sign up to get started</p>
+
+          {errors.general && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+              {errors.general}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name Fields */}
@@ -161,6 +223,9 @@ export default function SignUpPage() {
                 <label htmlFor="password" className="block text-gray-700 mb-2">
                   Password <span className="text-red-500">*</span>
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
+                </p>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -266,9 +331,10 @@ export default function SignUpPage() {
             {/* Sign Up Button */}
             <button
               type="submit"
-              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors"
+              disabled={isLoading}
+              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Sign Up
+              {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
           </form>
 
