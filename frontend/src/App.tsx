@@ -18,6 +18,7 @@ import { OrderDetails } from "./components/pages/OrderDetails";
 import { OrderHistory } from "./components/pages/OrderHistory";
 import { OrderSuccess } from "./components/pages/OrderSuccess";
 import AboutUsPage from "./components/pages/AboutUsPage";
+import ContactUsPage from "./components/pages/ContactUSPage";
 
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/about" element={<AboutUsPage />} />
+        <Route path="/contact" element={<ContactUsPage/>}/>
 
         {/* Admin pages */}
         <Route path="/dashboard" element={<AdminDashboard userRole={null} onLogout={function (): void {
