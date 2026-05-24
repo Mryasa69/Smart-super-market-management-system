@@ -8,9 +8,9 @@ const categories = [
   { name: 'Dairy & Eggs', image: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=300&fit=crop' },
   { name: 'Bakery', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop' },
   { name: 'Meat & Seafood', image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop' },
-  { name: 'Beverages', image: 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9d?w=400&h=300&fit=crop' },
+  { name: 'Beverages', image: 'https://images.unsplash.com/photo-1527960471264-932f39eb5846?q=80&w=1170&auto=format&fit=crop' },
   { name: 'Snacks & Sweets', image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&h=300&fit=crop' },
-  { name: 'Frozen Foods', image: 'https://images.unsplash.com/photo-1580621312534-f3f5e28eff85?w=400&h=300&fit=crop' },
+  { name: 'Frozen Foods', image: 'https://images.unsplash.com/photo-1589010588553-46e8e7c21788?q=80&w=1260&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
   { name: 'Personal Care', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop' },
 ];
 
@@ -27,7 +27,7 @@ const weeklyDeals = [
   { id: 1, name: 'Premium Rice 5kg', originalPrice: 'Rs. 1,200', salePrice: 'Rs. 720', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop', discount: '40%', badge: 'HOT DEAL' },
   { id: 2, name: 'Fresh Salmon', originalPrice: 'Rs. 2,500/kg', salePrice: 'Rs. 1,750/kg', image: 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop', discount: '30%', badge: 'WEEKLY SPECIAL' },
   { id: 3, name: 'Imported Cheese', originalPrice: 'Rs. 950', salePrice: 'Rs. 665', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop', discount: '30%', badge: 'LIMITED' },
-  { id: 4, name: 'Breakfast Cereal 500g', originalPrice: 'Rs. 680', salePrice: 'Rs. 476', image: 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop', discount: '30%', badge: 'BEST SELLER' },
+  { id: 4, name: 'Breakfast Cereal 500g', originalPrice: 'Rs. 680', salePrice: 'Rs. 476', image: 'https://media.istockphoto.com/id/2248185261/photo/breakfast-cereals-on-the-kitchen-table-three-bowls-filled-with-healthy-wholegrain-cereals.jpg?s=1024x1024&w=is&k=20&c=zFnfLpfJvfPFs3aYIBoEt4W6VxlCDWmEtKNglWMSCdo=', discount: '30%', badge: 'BEST SELLER' },
   { id: 5, name: 'Olive Oil 1L', originalPrice: 'Rs. 1,800', salePrice: 'Rs. 1,260', image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop', discount: '30%', badge: 'PREMIUM' },
   { id: 6, name: 'Fresh Strawberries', originalPrice: 'Rs. 850', salePrice: 'Rs. 595', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop', discount: '30%', badge: 'FRESH TODAY' },
 ];
@@ -76,6 +76,8 @@ export default function HomePage() {
 
     return () => clearInterval(timer);
   }, []);
+
+  
 
 const handleAddToCart = (
   productId: number,
@@ -232,9 +234,14 @@ const handleAddToCart = (
           <h2 className="text-gray-800 mb-8 text-center">Shop by Category</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {categories.map((category, index) => (
-              <div 
+              <div
                 key={index}
                 className="group cursor-pointer"
+                onClick={() =>
+                navigate("/products", {
+                  state: { category: category.name }
+                })
+              }
               >
                 <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow">
                   <img 
