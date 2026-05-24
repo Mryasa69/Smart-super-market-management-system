@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check, ChevronDown, LogOut } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { apiService } from '../../services/api';
 
 const categories = [
   { name: 'Fruits & Vegetables', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop' },
@@ -14,14 +15,10 @@ const categories = [
   { name: 'Personal Care', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop' },
 ];
 
-const featuredProducts = [
-  { id: 1, name: 'Fresh Apples', price: 'Rs. 450/kg', image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=300&h=300&fit=crop', discount: '10% OFF' },
-  { id: 2, name: 'Milk 1L', price: 'Rs. 280', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=300&h=300&fit=crop', discount: null },
-  { id: 3, name: 'White Bread', price: 'Rs. 120', image: 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=300&h=300&fit=crop', discount: '5% OFF' },
-  { id: 4, name: 'Fresh Chicken', price: 'Rs. 850/kg', image: 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=300&h=300&fit=crop', discount: null },
-  { id: 5, name: 'Orange Juice', price: 'Rs. 320', image: 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=300&h=300&fit=crop', discount: '15% OFF' },
-  { id: 6, name: 'Chocolate Bar', price: 'Rs. 180', image: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=300&h=300&fit=crop', discount: null },
-];
+const getDefaultImage = (name: string, category: string) => {
+  const lowerName = name.toLowerCase();
+  const lowerCat = category.toLowerCase();
+
 
 const weeklyDeals = [
   { id: 1, name: 'Premium Rice 5kg', originalPrice: 'Rs. 1,200', salePrice: 'Rs. 720', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop', discount: '40%', badge: 'HOT DEAL' },
@@ -32,25 +29,78 @@ const weeklyDeals = [
   { id: 6, name: 'Fresh Strawberries', originalPrice: 'Rs. 850', salePrice: 'Rs. 595', image: 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop', discount: '30%', badge: 'FRESH TODAY' },
 ];
 
-export default function HomePage() {
+  if (lowerName.includes('apple')) return 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&h=400&fit=crop';
+  if (lowerName.includes('milk')) return 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&h=400&fit=crop';
+  if (lowerName.includes('bread')) return 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=400&h=400&fit=crop';
+  if (lowerName.includes('chicken')) return 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&h=400&fit=crop';
+  if (lowerName.includes('juice')) return 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop';
+  if (lowerName.includes('chocolate')) return 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=400&h=400&fit=crop';
+  if (lowerName.includes('rice')) return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop';
+  if (lowerName.includes('salmon') || lowerName.includes('fish')) return 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop';
+  if (lowerName.includes('cheese')) return 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop';
+  if (lowerName.includes('cereal')) return 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop';
+  if (lowerName.includes('oil')) return 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop';
+  if (lowerName.includes('strawberry') || lowerName.includes('berry')) return 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop';
 
+  if (lowerCat.includes('fruit') || lowerCat.includes('veg')) return 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop';
+  if (lowerCat.includes('dairy')) return 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=300&fit=crop';
+  if (lowerCat.includes('bakery')) return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop';
+  if (lowerCat.includes('meat')) return 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop';
+
+  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
+};
+
+
+
+export default function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [cartCount, setCartCount] = useState(0);
-  const [addedToCart, setAddedToCart] = useState<number | null>(null);
+  const [addedToCart, setAddedToCart] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState({
     days: 3,
     hours: 12,
     minutes: 45,
     seconds: 30
   });
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  const [memberRole, setMemberRole] = useState<'customer' | 'admin' | 'cashier' | 'stock_manager' | null>(null);
+  const [memberDisplayName, setMemberDisplayName] = useState('Guest User');
+  const [memberEmail, setMemberEmail] = useState('');
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const [realProducts, setRealProducts] = useState<any[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        console.log("Fetching products...");
+        const res = await apiService.getProducts();
+        console.log("Products fetch response:", res);
+        if (res.success && res.data) {
+          setRealProducts(res.data);
+        } else {
+          console.warn("Product fetch failed or returned no data:", res.message);
+        }
+      } catch (err) {
+        console.error("Error fetching products:", err);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const featuredList = realProducts.filter(p => p.specialOffers && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const weeklyList = realProducts.filter(p => p.weeklyDeals && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   // Countdown timer for weekly deals
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         let { days, hours, minutes, seconds } = prev;
-        
+
         if (seconds > 0) {
           seconds--;
         } else {
@@ -69,14 +119,13 @@ export default function HomePage() {
             }
           }
         }
-        
+
         return { days, hours, minutes, seconds };
       });
     }, 1000);
 
     return () => clearInterval(timer);
   }, []);
-
   
 
 const handleAddToCart = (
@@ -115,6 +164,131 @@ const handleAddToCart = (
   // UI effects (same as yours)
   setTimeout(() => setAddedToCart(null), 2000);
 };
+
+  useEffect(() => {
+    const employeeUser = apiService.getStoredUser();
+    if (employeeUser?.role) {
+      setMemberRole(employeeUser.role as 'customer' | 'admin' | 'cashier' | 'stock_manager');
+      setMemberDisplayName(
+        [employeeUser.firstName, employeeUser.lastName].filter(Boolean).join(' ') || employeeUser.email || 'Member'
+      );
+      setMemberEmail(employeeUser.email || '');
+      return;
+    }
+
+    const customerToken = localStorage.getItem('customerToken');
+    const customer = localStorage.getItem('customer');
+    if (customerToken && customer) {
+      const customerObj = JSON.parse(customer);
+      setMemberRole('customer');
+      setMemberDisplayName(customerObj?.name || 'Customer');
+      setMemberEmail(customerObj?.email || '');
+      return;
+    }
+
+    setMemberRole(null);
+    setMemberDisplayName('Guest User');
+    setMemberEmail('');
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setIsAccountMenuOpen(false);
+      }
+    };
+
+    if (isAccountMenuOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isAccountMenuOpen]);
+
+  const accountMenuItems = (() => {
+    if (memberRole === 'customer') {
+      return [
+        { label: 'My Profile', path: '/profile' },
+        { label: 'My Orders', path: '/orders' },
+        { label: 'Loyalty Activity', path: '/customer-dashboard' },
+      ];
+    }
+
+    if (memberRole === 'cashier') {
+      return [
+        { label: 'POS Activity', path: '/pos' },
+        { label: 'Customer Activity', path: '/customers' },
+      ];
+    }
+
+    if (memberRole === 'stock_manager') {
+      return [
+        { label: 'Inventory Activity', path: '/inventory' },
+        { label: 'Supplier Activity', path: '/suppliers' },
+      ];
+    }
+
+    if (memberRole === 'admin') {
+      return [
+        { label: 'Dashboard Activity', path: '/dashboard' },
+        { label: 'Employee Activity', path: '/employees' },
+        { label: 'Reports Activity', path: '/reports' },
+      ];
+    }
+
+    return [];
+  })();
+
+  const handleLogout = () => {
+    apiService.logout();
+    setMemberRole(null);
+    setIsAccountMenuOpen(false);
+    window.location.href = '/login';
+  };
+
+  const handleAddToCart = (
+    productId: any,
+    productName: string,
+    productPrice: any,
+    productImage: string
+  ) => {
+    setCartCount(prev => prev + 1);
+    setAddedToCart(productId);
+
+    // ✅ Get existing cart
+    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    // ✅ Check if item already exists
+    const itemIndex = existingCart.findIndex((item: any) => item.id === productId);
+
+    const priceNum = typeof productPrice === 'string'
+      ? parseFloat(productPrice.replace(/[^0-9.]/g, ""))
+      : productPrice;
+
+    if (itemIndex !== -1) {
+      // already in cart → increase quantity
+      existingCart[itemIndex].quantity += 1;
+    } else {
+      // add new item
+      existingCart.push({
+        id: productId,
+        name: productName,
+        price: priceNum,
+        pricePerKg: `Rs. ${priceNum}`,
+        image: productImage || 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=300&h=300&fit=crop',
+        quantity: 1
+      });
+    }
+
+    // ✅ Save to localStorage
+    localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    // UI effects (same as yours)
+    setTimeout(() => setAddedToCart(null), 2000);
+  };
+
 
 
   return (
@@ -172,14 +346,93 @@ const handleAddToCart = (
 
             {/* Right Side Icons */}
 
-            
+
             <div className="flex items-center gap-6">
-              <Link to="/login" className="flex flex-col items-center gap-1 hover:text-green-700">
-                <User className="w-6 h-6" />
-                <span className="text-sm">Account</span>
-              </Link>
-              <button onClick={() => navigate('/cart')}  className="flex flex-col items-center gap-1 relative hover:text-green-700"
->
+              <div className="relative" ref={accountMenuRef}>
+                <button
+                  onClick={() => setIsAccountMenuOpen((prev) => !prev)}
+                  className="flex flex-col items-center gap-1 hover:text-green-700"
+                >
+                  <div className="flex items-center gap-1">
+                    <User className="w-6 h-6" />
+                    <ChevronDown className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm capitalize">{memberRole ? memberRole.replace('_', ' ') : 'Account'}</span>
+                </button>
+
+                {isAccountMenuOpen && (
+                  <div
+                    className="absolute right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                    style={{ width: '150px' }}
+                  >
+                    {!memberRole ? (
+                      <div className="px-4 py-3 space-y-3">
+                        <div className="space-y-1">
+                          <p className="text-sm font-bold text-gray-800">Welcome Guest!</p>
+                          <p className="text-xs text-gray-500">Sign in to manage your orders and loyalty points.</p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigate('/login');
+                            setIsAccountMenuOpen(false);
+                          }}
+                          className="w-full bg-green-700 text-white py-2 rounded-lg text-sm font-bold hover:bg-green-800 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <LogOut className="w-4 h-4 rotate-180" />
+                          Sign In
+                        </button>
+                        <div className="flex items-center gap-2 py-1">
+                          <div className="flex-1 h-[1px] bg-gray-100"></div>
+                          <span className="text-[10px] text-gray-400 uppercase font-bold">New here?</span>
+                          <div className="flex-1 h-[1px] bg-gray-100"></div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigate('/customer-register');
+                            setIsAccountMenuOpen(false);
+                          }}
+                          className="w-full border border-gray-200 text-gray-700 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition-colors"
+                        >
+                          Create Account
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="px-4 pb-2 border-b border-gray-100">
+                          <p className="text-sm font-bold text-gray-800 truncate">{memberDisplayName}</p>
+                          {memberEmail && <p className="text-xs text-gray-500 truncate">{memberEmail}</p>}
+                        </div>
+                        <div className="py-1">
+                          <p className="px-4 py-2 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Activities</p>
+                          {accountMenuItems.map((item) => (
+                            <button
+                              key={item.path}
+                              onClick={() => {
+                                navigate(item.path);
+                                setIsAccountMenuOpen(false);
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="border-t border-gray-100 mt-1 pt-1">
+                          <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium transition-colors"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            Logout
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button onClick={() => navigate('/cart')} className="flex flex-col items-center gap-1 relative hover:text-green-700"
+              >
                 <ShoppingCart className="w-6 h-6" />
                 {cartCount > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -218,8 +471,8 @@ const handleAddToCart = (
               </button>
             </div>
             <div>
-              <img 
-                src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&h=500&fit=crop" 
+              <img
+                src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&h=500&fit=crop"
                 alt="Supermarket"
                 className="rounded-lg shadow-lg w-full"
               />
@@ -244,7 +497,7 @@ const handleAddToCart = (
               }
               >
                 <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow">
-                  <img 
+                  <img
                     src={category.image}
                     alt={category.name}
                     className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
@@ -262,36 +515,54 @@ const handleAddToCart = (
       {/* Featured Products */}
       <section id="offers" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-gray-800 mb-8 text-center">Special Offers</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {featuredProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="relative">
-                  <img 
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  {product.discount && (
-                    <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
-                      {product.discount}
-                    </span>
-                  )}
+          <h2 className="text-gray-800 mb-8 text-center">
+            {searchQuery ? `Search Results for "${searchQuery}"` : 'Special Offers'}
+          </h2>
+          {isLoadingProducts ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {featuredList.map((product) => (
+                <div key={product._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
+                  <div className="relative">
+                    <img
+                      src={product.image || getDefaultImage(product.name, product.category)}
+                      alt={product.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    {product.specialOffers && (
+                      <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
+                        SPECIAL
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-gray-800 mb-2">{product.name}</h3>
+                    <p className="text-green-700 mb-3 font-bold">Rs. {product.price}</p>
+                    <button
+                      className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                      onClick={() => handleAddToCart(product._id, product.name, product.price, product.image)}
+                      disabled={addedToCart === product._id}
+                    >
+                      {addedToCart === product._id ? 'Added!' : 'Add to Cart'}
+                    </button>
+                  </div>
                 </div>
-                <div className="p-4">
-                  <h3 className="text-gray-800 mb-2">{product.name}</h3>
-                  <p className="text-green-700 mb-3">{product.price}</p>
-                  <button 
-                    className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                    onClick={() => handleAddToCart( product.id, product.name, product.price,  product.image )}
-                    disabled={addedToCart === product.id}
-                  >
-                    {addedToCart === product.id ? 'Added!' : 'Add to Cart'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+          {searchQuery && featuredList.length === 0 && !isLoadingProducts && (
+            <div className="text-center py-10">
+              <p className="text-gray-500 italic">No special offers found matching your search.</p>
+            </div>
+          )}
+          {!searchQuery && featuredList.length === 0 && !isLoadingProducts && (
+            <div className="text-center py-10 bg-white rounded-lg border-2 border-dashed border-gray-200">
+              <p className="text-gray-400">No products are currently marked as Special Offers.</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -299,55 +570,81 @@ const handleAddToCart = (
       <section id="weekly-deals" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-gray-800 mb-8 text-center">Weekly Deals</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            {weeklyDeals.map((deal) => (
-              <div key={deal.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
-                <div className="relative">
-                  <img 
-                    src={deal.image}
-                    alt={deal.name}
-                    className="w-full h-48 object-cover"
-                  />
-                  <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
-                    {deal.discount} OFF
-                  </span>
-                  <span className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-sm">
-                    {deal.badge}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-gray-800 mb-2">{deal.name}</h3>
-                  <p className="text-gray-500 line-through mb-1">{deal.originalPrice}</p>
-                  <p className="text-green-700 mb-3">{deal.salePrice}</p>
-                  <button 
-                    className={`w-full text-white py-2 rounded transition-all ${
-                      addedToCart === deal.id + 100 
-                        ? 'bg-green-800' 
+          {isLoadingProducts ? (
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {weeklyList.map((deal) => (
+                <div key={deal._id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow">
+                  <div className="relative">
+                    <img
+                      src={deal.image || getDefaultImage(deal.name, deal.category)}
+                      alt={deal.name}
+                      className="w-full h-48 object-cover"
+                    />
+                    <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-sm">
+                      HOT DEAL
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-gray-800 mb-2">{deal.name}</h3>
+                    <p className="text-green-700 mb-3 font-bold">Rs. {deal.price}</p>
+                    <button
+                      className={`w-full text-white py-2 rounded transition-all ${addedToCart === deal._id
+                        ? 'bg-green-800'
                         : 'bg-green-600 hover:bg-green-700 hover:scale-105'
-                    }`}
-                    onClick={() => handleAddToCart( deal.id + 100, deal.name, deal.salePrice, deal.image )}
-                    disabled={addedToCart === deal.id + 100}
-                  >
-                    {addedToCart === deal.id + 100 ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Check className="w-4 h-4" />
-                        Added!
-                      </span>
-                    ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <ShoppingCart className="w-4 h-4" />
-                        Add to Cart
-                      </span>
-                    )}
-                  </button>
+                        }`}
+                      onClick={() => handleAddToCart(deal._id, deal.name, deal.price, deal.image)}
+                      disabled={addedToCart === deal._id}
+                    >
+                      {addedToCart === deal._id ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Check className="w-4 h-4" />
+                          Added!
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <ShoppingCart className="w-4 h-4" />
+                          Add to Cart
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  <div className="bg-gray-100 text-center p-2 text-sm text-gray-700">
+                    <Clock className="w-4 h-4 inline-block mr-1" />
+                    {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
+                  </div>
                 </div>
-                <div className="bg-gray-100 text-center p-2 text-sm text-gray-700">
-                  <Clock className="w-4 h-4 inline-block mr-1" />
-                  {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
-                </div>
+              ))}
+            </div>
+          )}
+          {searchQuery && weeklyList.length === 0 && !isLoadingProducts && (
+            <div className="text-center py-10">
+              <p className="text-gray-500 italic">No weekly deals found matching your search.</p>
+            </div>
+          )}
+          {!searchQuery && weeklyList.length === 0 && !isLoadingProducts && (
+            <div className="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+              <p className="text-gray-400">No products are currently marked as Weekly Deals.</p>
+            </div>
+          )}
+          {searchQuery &&
+            featuredList.length === 0 &&
+            weeklyList.length === 0 && !isLoadingProducts && (
+              <div className="bg-green-50 rounded-xl p-8 text-center max-w-lg mx-auto">
+                <Search className="w-12 h-12 text-green-300 mx-auto mb-4" />
+                <h3 className="text-gray-800">No products found</h3>
+                <p className="text-gray-600">Try searching for something else like "Apples" or "Milk".</p>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-4 text-green-700 font-bold hover:underline"
+                >
+                  Clear Search
+                </button>
               </div>
-            ))}
-          </div>
+            )}
         </div>
       </section>
 

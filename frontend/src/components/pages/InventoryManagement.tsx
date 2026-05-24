@@ -1,44 +1,143 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Search, Plus, Edit, Trash2, Package, Filter, Download, QrCode } from 'lucide-react';
+import { apiService, Product } from '../../services/api';
 
 interface InventoryManagementProps {
   userRole: 'admin' | 'cashier' | 'stock_manager' | null;
   onLogout: () => void;
 }
 
-interface Product {
-  id: number;
-  name: string;
-  category: string;
-  sku: string;
-  quantity: number;
-  price: number;
-  minStock: number;
-  supplier: string;
-  status: 'in-stock' | 'low-stock' | 'out-of-stock';
-}
-
-const initialProducts: Product[] = [
-  { id: 1, name: 'Fresh Milk 1L', category: 'Dairy', sku: 'MILK001', quantity: 150, price: 280, minStock: 50, supplier: 'Dairy Farm Ltd', status: 'in-stock' },
-  { id: 2, name: 'White Bread', category: 'Bakery', sku: 'BREAD001', quantity: 80, price: 120, minStock: 30, supplier: 'Golden Bakery', status: 'in-stock' },
-  { id: 3, name: 'Tomatoes 1kg', category: 'Vegetables', sku: 'VEG001', quantity: 15, price: 350, minStock: 50, supplier: 'Fresh Farms', status: 'low-stock' },
-  { id: 4, name: 'Chicken 1kg', category: 'Meat', sku: 'MEAT001', quantity: 45, price: 850, minStock: 20, supplier: 'ABC Poultry', status: 'in-stock' },
-  { id: 5, name: 'Rice 5kg', category: 'Grains', sku: 'RICE001', quantity: 0, price: 600, minStock: 10, supplier: 'Rice Mills', status: 'out-of-stock' },
-  { id: 6, name: 'Orange Juice 1L', category: 'Beverages', sku: 'BEV001', quantity: 30, price: 320, minStock: 75, supplier: 'Fruit Drinks Co', status: 'low-stock' },
-  { id: 7, name: 'Chocolate Bar', category: 'Snacks', sku: 'SNACK001', quantity: 200, price: 180, minStock: 100, supplier: 'Sweet Treats', status: 'in-stock' },
-  { id: 8, name: 'Eggs (Dozen)', category: 'Dairy', sku: 'EGG001', quantity: 25, price: 450, minStock: 100, supplier: 'Dairy Farm Ltd', status: 'low-stock' },
-];
 
 export default function InventoryManagement({ userRole, onLogout }: InventoryManagementProps) {
-  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'Dairy',
+    sku: '',
+    quantity: 0,
+    price: 0,
+    minStock: 0,
+    supplier: '',
+    specialOffers: false,
+    weeklyDeals: false,
+    image: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const categories = ['all', 'Dairy', 'Bakery', 'Vegetables', 'Meat', 'Grains', 'Beverages', 'Snacks'];
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getProducts();
+      if (response.success && response.data) {
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading products:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      let response;
+      if (editingProduct) {
+        response = await apiService.updateProduct(editingProduct._id, formData);
+        if (response.success) {
+          alert('Product updated successfully!');
+        } else {
+          alert('Failed to update product: ' + response.message);
+        }
+      } else {
+        response = await apiService.createProduct(formData);
+        if (response.success) {
+          alert('Product added successfully!');
+        } else {
+          alert('Failed to add product: ' + response.message);
+        }
+      }
+      
+      if (response.success) {
+        setShowAddModal(false);
+        setEditingProduct(null);
+        setFormData({
+          name: '',
+          category: 'Dairy',
+          sku: '',
+          quantity: 0,
+          price: 0,
+          minStock: 0,
+          supplier: '',
+          specialOffers: false,
+          weeklyDeals: false,
+          image: ''
+        });
+        loadProducts(); // Reload products
+      }
+    } catch (error) {
+      alert('Error saving product');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'quantity' || name === 'price' || name === 'minStock' ? Number(value) : value
+    }));
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      category: product.category,
+      sku: product.sku,
+      quantity: product.quantity,
+      price: product.price,
+      minStock: product.minStock,
+      supplier: product.supplier,
+      specialOffers: product.specialOffers || false,
+      weeklyDeals: product.weeklyDeals || false,
+      image: product.image || ''
+    });
+    setShowAddModal(true);
+  };
+
+  const handleModalClose = () => {
+    setShowAddModal(false);
+    setEditingProduct(null);
+    setFormData({
+      name: '',
+      category: 'Dairy',
+      sku: '',
+      quantity: 0,
+      price: 0,
+      minStock: 0,
+      supplier: '',
+      specialOffers: false,
+      weeklyDeals: false,
+      image: ''
+    });
+  };
+
+  const categories = ['all', 'Dairy', 'Bakery', 'Vegetables', 'Meat', 'Grains', 'Beverages', 'Snacks', 'Fruits', 'Other'];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -48,9 +147,18 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const handleDeleteProduct = (id: number) => {
+  const handleDeleteProduct = async (id: string) => {
     if (confirm('Are you sure you want to delete this product?')) {
-      setProducts(products.filter((p) => p.id !== id));
+      try {
+        const response = await apiService.deleteProduct(id);
+        if (response.success) {
+          setProducts(products.filter((p) => p._id !== id));
+        } else {
+          alert('Failed to delete product: ' + response.message);
+        }
+      } catch (error) {
+        alert('Error deleting product');
+      }
     }
   };
 
@@ -65,6 +173,12 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getProductStatus = (product: Product): string => {
+    if (product.quantity === 0) return 'out-of-stock';
+    if (product.quantity <= product.minStock) return 'low-stock';
+    return 'in-stock';
   };
 
   return (
@@ -169,8 +283,10 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredProducts.map((product) => (
-                  <tr key={product.id} className="hover:bg-gray-50">
+                {filteredProducts.map((product) => {
+                  const status = getProductStatus(product);
+                  return (
+                  <tr key={product._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-gray-900">{product.sku}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -188,20 +304,20 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                     <td className="px-6 py-4 text-gray-900">Rs. {product.price}</td>
                     <td className="px-6 py-4 text-gray-600">{product.supplier}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(product.status)}`}>
-                        {product.status.replace('-', ' ').toUpperCase()}
+                      <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(status)}`}>
+                        {status.replace('-', ' ').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setEditingProduct(product)}
+                          onClick={() => handleEditProduct(product)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteProduct(product.id)}
+                          onClick={() => handleDeleteProduct(product._id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -209,7 +325,8 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -222,27 +339,40 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
               <h2 className="text-gray-800 mb-4">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h2>
-              <form className="space-y-4">
+              <form onSubmit={handleAddProduct} className="space-y-4">
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-gray-700 mb-2">Product Name</label>
                     <input
                       type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter product name"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">SKU</label>
                     <input
                       type="text"
+                      name="sku"
+                      value={formData.sku}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter SKU"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Category</label>
-                    <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <select 
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
                       {categories.filter((c) => c !== 'all').map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
@@ -252,51 +382,107 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                     <label className="block text-gray-700 mb-2">Supplier</label>
                     <input
                       type="text"
+                      name="supplier"
+                      value={formData.supplier}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter supplier"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Quantity</label>
                     <input
                       type="number"
+                      name="quantity"
+                      value={formData.quantity}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter quantity"
+                      min="0"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Minimum Stock</label>
                     <input
                       type="number"
+                      name="minStock"
+                      value={formData.minStock}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter minimum stock"
+                      min="0"
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-gray-700 mb-2">Image URL</label>
+                    <input
+                      type="text"
+                      name="image"
+                      value={formData.image}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Enter image URL (Unsplash/Imgur etc.)"
                     />
                   </div>
                   <div>
                     <label className="block text-gray-700 mb-2">Price (Rs.)</label>
                     <input
                       type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                       placeholder="Enter price"
+                      min="0"
+                      step="0.01"
+                      required
                     />
+                  </div>
+                </div>
+                
+                {/* Promotion Options */}
+                <div className="bg-green-50 p-4 rounded-lg space-y-3">
+                  <h3 className="text-sm font-bold text-green-800 uppercase">Promotion Settings</h3>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        name="specialOffers"
+                        checked={formData.specialOffers}
+                        onChange={(e) => setFormData(prev => ({ ...prev, specialOffers: e.target.checked }))}
+                        className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="text-gray-700 group-hover:text-green-700 transition-colors">Add to Special Offers</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        name="weeklyDeals"
+                        checked={formData.weeklyDeals}
+                        onChange={(e) => setFormData(prev => ({ ...prev, weeklyDeals: e.target.checked }))}
+                        className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="text-gray-700 group-hover:text-green-700 transition-colors">Add to Weekly Deals</span>
+                    </label>
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end mt-6">
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowAddModal(false);
-                      setEditingProduct(null);
-                    }}
+                    onClick={handleModalClose}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50"
                   >
-                    {editingProduct ? 'Update Product' : 'Add Product'}
+                    {isSubmitting ? (editingProduct ? 'Updating...' : 'Adding...') : (editingProduct ? 'Update Product' : 'Add Product')}
                   </button>
                 </div>
               </form>
