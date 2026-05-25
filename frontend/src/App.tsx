@@ -20,6 +20,7 @@ import { OrderSuccess } from "./components/pages/OrderSuccess";
 import AboutUsPage from "./components/pages/AboutUsPage";
 import ContactUsPage from "./components/pages/ContactUSPage";
 import Products from "./components/pages/Products";
+import ServicesPage from "./components/pages/ServicesPage";
 
 
 
@@ -42,6 +43,7 @@ function App() {
         <Route path="/about" element={<AboutUsPage />} />
         <Route path="/contact" element={<ContactUsPage />} />
         <Route path="/products" element={<Products />} />
+        <Route path="/services" element={<ServicesPage />} />
         
         
 
