@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, User, Heart, Award } from "lucide-react";
 import { Button } from "../ui/button";
@@ -9,16 +9,51 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 export default function Profile() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("profile");
+  const [userData, setUserData] = useState({
+    name: "",
+    email: "",
+    points: 0,
+    orders: 0,
+    phone: "",
+    address: "",
+    nicNumber: "",
+  });
 
-  const userData = {
-    name: "John Doe",
-    email: "john.doe@email.com",
-    points: 2450,
-    orders: 2,
-    phone: "+94 77 123 4567",
-    address: "123, Main Street, Colombo 07",
-    nicNumber: "199012345678",
-  };
+  useEffect(() => {
+    const employee = localStorage.getItem("user");
+    const customer = localStorage.getItem("customer");
+    const customerProfile = localStorage.getItem("customerProfile");
+    const customerOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+
+    const employeeObj = employee ? JSON.parse(employee) : null;
+    const customerObj = customer ? JSON.parse(customer) : null;
+    
+    let baseName = "";
+    let baseEmail = "";
+    let basePhone = "";
+
+    if (employeeObj) {
+      baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
+      baseEmail = employeeObj.email || "";
+      basePhone = employeeObj.phone || "";
+    } else if (customerObj) {
+      baseName = customerObj.name || "";
+      baseEmail = customerObj.email || "";
+      basePhone = customerObj.phone || "";
+    }
+
+    const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
+
+    setUserData({
+      name: profileObj.name || baseName || "Customer",
+      email: profileObj.email || baseEmail || "",
+      points: profileObj.points || customerObj?.loyaltyPoints || 0,
+      orders: customerOrders.length,
+      phone: profileObj.phone || basePhone || "",
+      address: profileObj.address || "",
+      nicNumber: profileObj.nicNumber || "",
+    });
+  }, []);
 
   const rewards = [
     {
@@ -158,11 +193,11 @@ export default function Profile() {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-gray-600 mb-1">First Name</p>
-                <p className="font-medium">John</p>
+                <p className="font-medium">{userData.name.split(" ")[0] || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">Last Name</p>
-                <p className="font-medium">Doe</p>
+                <p className="font-medium">{userData.name.split(" ").slice(1).join(" ") || "-"}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">Email</p>
@@ -170,15 +205,15 @@ export default function Profile() {
               </div>
               <div>
                 <p className="text-sm text-gray-600 mb-1">Phone</p>
-                <p className="font-medium">{userData.phone}</p>
+                <p className="font-medium">{userData.phone || "Please add contact details"}</p>
               </div>
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-600 mb-1">Address</p>
-                <p className="font-medium">{userData.address}</p>
+                <p className="font-medium">{userData.address || "Please add address details"}</p>
               </div>
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-600 mb-1">NIC Number</p>
-                <p className="font-medium">{userData.nicNumber}</p>
+                <p className="font-medium">{userData.nicNumber || "-"}</p>
               </div>
             </div>
           </Card>

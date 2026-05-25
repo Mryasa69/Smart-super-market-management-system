@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, User, Heart, Award, ShoppingCart as CartIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -10,13 +10,52 @@ export default function ProfileEdit() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@email.com",
-    phone: "+94 77 123 4567",
-    address: "123, Main Street, Colombo 07",
-    nicNumber: "199012345678",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    nicNumber: "",
   });
+
+  useEffect(() => {
+    const employee = localStorage.getItem("user");
+    const customer = localStorage.getItem("customer");
+    const customerProfile = localStorage.getItem("customerProfile");
+
+    const employeeObj = employee ? JSON.parse(employee) : null;
+    const customerObj = customer ? JSON.parse(customer) : null;
+    
+    let baseName = "";
+    let baseEmail = "";
+    let basePhone = "";
+
+    if (employeeObj) {
+      baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
+      baseEmail = employeeObj.email || "";
+      basePhone = employeeObj.phone || "";
+    } else if (customerObj) {
+      baseName = customerObj.name || "";
+      baseEmail = customerObj.email || "";
+      basePhone = customerObj.phone || "";
+    }
+
+    const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
+
+    const nameToUse = profileObj.name || baseName;
+    const nameParts = nameToUse.trim().split(" ").filter(Boolean);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ");
+
+    setFormData({
+      firstName,
+      lastName,
+      email: profileObj.email || baseEmail || "",
+      phone: profileObj.phone || basePhone || "",
+      address: profileObj.address || "",
+      nicNumber: profileObj.nicNumber || "",
+    });
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -26,6 +65,47 @@ export default function ProfileEdit() {
   };
 
   const handleSave = () => {
+    const name = `${formData.firstName} ${formData.lastName}`.trim();
+    const existingProfile = JSON.parse(localStorage.getItem("customerProfile") || "{}");
+    const nextProfile = {
+      ...existingProfile,
+      name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      nicNumber: formData.nicNumber,
+    };
+    localStorage.setItem("customerProfile", JSON.stringify(nextProfile));
+
+    const customer = localStorage.getItem("customer");
+    if (customer) {
+      const customerObj = JSON.parse(customer);
+      localStorage.setItem(
+        "customer",
+        JSON.stringify({
+          ...customerObj,
+          name,
+          email: formData.email,
+          phone: formData.phone,
+        })
+      );
+    }
+
+    const employee = localStorage.getItem("user");
+    if (employee) {
+      const employeeObj = JSON.parse(employee);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...employeeObj,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+        })
+      );
+    }
+
     navigate("/profile");
   };
 
@@ -33,12 +113,8 @@ export default function ProfileEdit() {
     navigate("/profile");
   };
 
-  const userData = {
-    name: "John Doe",
-    email: "john.doe@email.com",
-    points: 2450,
-    orders: 2,
-  };
+  const orderCount = JSON.parse(localStorage.getItem("customerOrders") || "[]").length;
+  const loyaltyPoints = JSON.parse(localStorage.getItem("customer") || "{}")?.loyaltyPoints || 0;
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
@@ -75,16 +151,16 @@ export default function ProfileEdit() {
             <User className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-xl">{userData.name}</h2>
-            <p className="text-green-100">{userData.email}</p>
+            <h2 className="text-xl">{`${formData.firstName} ${formData.lastName}`.trim() || "Customer"}</h2>
+            <p className="text-green-100">{formData.email}</p>
           </div>
         </div>
         <div className="flex gap-4">
           <div className="bg-green-700 px-4 py-2 rounded-full">
-            {userData.points} Points
+            {loyaltyPoints} Points
           </div>
           <div className="bg-green-700 bg-opacity-50 px-4 py-2 rounded-full">
-            {userData.orders} Orders
+            {orderCount} Orders
           </div>
         </div>
       </Card>

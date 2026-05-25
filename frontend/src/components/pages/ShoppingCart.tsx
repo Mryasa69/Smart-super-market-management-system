@@ -14,6 +14,16 @@ type CartItem = {
   image: string;
   quantity: number;
 };
+
+type CustomerProfile = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  nicNumber?: string;
+  loyaltyPoints?: number;
+};
+
 export default function ShoppingCart() {
   const navigate = useNavigate();
 
@@ -23,15 +33,30 @@ export default function ShoppingCart() {
     return savedCart ? JSON.parse(savedCart) : [];
   });
 
-  const [deliveryAddress, setDeliveryAddress] = useState(
-    "123, Main Street, Colombo 07"
-  );
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile>({});
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
 
   // ✅ Save cart to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems));
   }, [cartItems]);
+
+  useEffect(() => {
+    const customer = localStorage.getItem("customer");
+    const customerProfileRaw = localStorage.getItem("customerProfile");
+
+    const customerObj = customer ? JSON.parse(customer) : {};
+    const profileObj = customerProfileRaw ? JSON.parse(customerProfileRaw) : {};
+    const mergedProfile = {
+      ...customerObj,
+      ...profileObj,
+    };
+
+    setCustomerProfile(mergedProfile);
+    setDeliveryAddress(mergedProfile.address || "");
+  }, []);
 
   const deliveryFee = 200;
 
@@ -61,6 +86,37 @@ const updateQuantity = (id: number, change: number) => {
 
   // ✅ Place order
   const handlePlaceOrder = () => {
+    if (!deliveryAddress.trim() || !customerProfile.phone?.trim()) {
+      setCheckoutError("Please add your address and contact number in My Profile before placing the order.");
+      return;
+    }
+
+    const existingOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+    const newOrder = {
+      id: `ORD-${Date.now().toString().slice(-6)}`,
+      date: new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      status: "Processing",
+      items: cartItems.map((item: CartItem) => ({
+        name: item.name,
+        image: item.image,
+        price: item.price,
+        pricePerKg: item.pricePerKg,
+        quantity: item.quantity,
+        total: item.price * item.quantity,
+      })),
+      itemCount: cartItems.length,
+      subtotal,
+      deliveryFee,
+      total,
+      deliveryAddress: deliveryAddress.trim(),
+      contactPhone: customerProfile.phone,
+    };
+
+    localStorage.setItem("customerOrders", JSON.stringify([newOrder, ...existingOrders]));
     localStorage.removeItem("cart"); // clear cart
     setCartItems([]);
     navigate("/order-success");
@@ -252,11 +308,32 @@ const updateQuantity = (id: number, change: number) => {
             {!showCheckout ? (
               <>
                 <Button
-                  onClick={() => setShowCheckout(true)}
+                  onClick={() => {
+                    if (!customerProfile.address?.trim() || !customerProfile.phone?.trim()) {
+                      setCheckoutError("Please complete your address and contact details in My Profile before checkout.");
+                      return;
+                    }
+                    setCheckoutError("");
+                    setShowCheckout(true);
+                  }}
                   className="w-full mb-2 bg-green-600 hover:bg-green-700"
                 >
                   Proceed to Checkout
                 </Button>
+
+                {checkoutError && (
+                  <div className="text-sm text-red-600 mb-2">{checkoutError}</div>
+                )}
+
+                {(!customerProfile.address?.trim() || !customerProfile.phone?.trim()) && (
+                  <Button
+                    onClick={() => navigate("/profile/edit")}
+                    variant="outline"
+                    className="w-full mb-2"
+                  >
+                    Add Address & Contact Details
+                  </Button>
+                )}
 
                 <button
                   onClick={() => navigate("/")}
@@ -272,6 +349,13 @@ const updateQuantity = (id: number, change: number) => {
                   onChange={(e) => setDeliveryAddress(e.target.value)}
                   className="mb-4"
                 />
+                <p className="text-xs text-gray-500 mb-4">
+                  Contact Number: {customerProfile.phone || "Not set"}
+                </p>
+
+                {checkoutError && (
+                  <div className="text-sm text-red-600 mb-2">{checkoutError}</div>
+                )}
 
                 <Button
                   onClick={handlePlaceOrder}

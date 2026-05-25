@@ -6,56 +6,8 @@ export function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
 
-  const orderData: Record<string, any> = {
-    "ORD-001": {
-      id: "ORD-001",
-      date: "March 20, 2026",
-      status: "Completed",
-      items: [
-        {
-          name: "Fresh Apples",
-          price: 450,
-          pricePerKg: 450,
-          quantity: 2,
-          total: 900,
-          image: "https://images.unsplash.com/photo-1568702846914-96b305d2aaeb?w=200",
-        },
-        {
-          name: "Milk 1L",
-          price: 280,
-          quantity: 3,
-          total: 840,
-          image: "https://images.unsplash.com/photo-1563636619-e9143da7973b?w=200",
-        },
-      ],
-      deliveryAddress: "123, Main Street, Colombo 07",
-      subtotal: 1740,
-      deliveryFee: 200,
-      total: 1940,
-    },
-    "ORD-002": {
-      id: "ORD-002",
-      date: "March 24, 2026",
-      status: "Processing",
-      items: [
-        {
-          name: "Premium Rice 5kg",
-          price: 720,
-          originalPrice: 1200,
-          discount: "40% OFF",
-          quantity: 1,
-          total: 720,
-          image: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=200",
-        },
-      ],
-      deliveryAddress: "123, Main Street, Colombo 07",
-      subtotal: 720,
-      deliveryFee: 200,
-      total: 920,
-    },
-  };
-
-  const order = orderData[orderId || ""];
+  const orders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+  const order = orders.find((o: any) => o.id === orderId);
 
   if (!order) {
     return (
