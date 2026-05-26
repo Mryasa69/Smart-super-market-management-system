@@ -23,6 +23,9 @@ import { OrderHistory } from "./components/pages/OrderHistory";
 import { OrderSuccess } from "./components/pages/OrderSuccess";
 import { apiService } from "./services/api";
 import AboutUsPage from "./components/pages/AboutUsPage";
+import ContactUsPage from "./components/pages/ContactUSPage";
+import Products from "./components/pages/Products";
+
 
 
 function App() {
@@ -84,6 +87,10 @@ function App() {
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/about" element={<AboutUsPage />} />
+        <Route path="/contact" element={<ContactUsPage />} />
+        <Route path="/products" element={<Products />} />
+        
+        
 
         {/* Protected pages */}
         <Route path="/dashboard" element={
