@@ -22,6 +22,8 @@ import { OrderDetails } from "./components/pages/OrderDetails";
 import { OrderHistory } from "./components/pages/OrderHistory";
 import { OrderSuccess } from "./components/pages/OrderSuccess";
 import { apiService } from "./services/api";
+import AboutUsPage from "./components/pages/AboutUsPage";
+
 
 function App() {
   const [userRole, setUserRole] = useState<'admin' | 'cashier' | 'stock_manager' | 'customer' | null>(null);
@@ -81,7 +83,7 @@ function App() {
         <Route path="/orders/:orderId" element={<OrderDetails />} />
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />
-        
+        <Route path="/about" element={<AboutUsPage />} />
 
         {/* Protected pages */}
         <Route path="/dashboard" element={

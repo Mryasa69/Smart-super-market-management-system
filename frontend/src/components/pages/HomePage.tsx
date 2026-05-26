@@ -626,43 +626,60 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
+       {/* Footer */}
       <footer className="bg-gray-800 text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
               <h3 className="mb-4">About Us</h3>
-              <p className="text-gray-400">Smart Supermarket - Your trusted partner for fresh groceries and daily essentials.</p>
+              <p className="text-gray-400 mb-4">Smart Supermarket - Your trusted partner for fresh groceries and daily essentials.</p>
+              <Link to="/about" className="text-green-400 hover:text-green-300">Learn More →</Link>
             </div>
             <div>
               <h3 className="mb-4">Quick Links</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">About</a></li>
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white">Terms & Conditions</a></li>
-                <li><a href="#" className="hover:text-white">FAQs</a></li>
+                <li><Link to="/products" className="hover:text-white">Products</Link></li>
+                <li><Link to="/services" className="hover:text-white">Services</Link></li>
+                <li><Link to="/orders" className="hover:text-white">My Orders</Link></li>
+                <li><Link to="/profile" className="hover:text-white">My Profile</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="mb-4">Customer Service</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white">Contact Us</a></li>
+                <li><Link to="/contact" className="hover:text-white">Contact Us</Link></li>
+                <li><Link to="/about" className="hover:text-white">About Us</Link></li>
                 <li><a href="#" className="hover:text-white">Return Policy</a></li>
-                <li><a href="#" className="hover:text-white">Delivery Info</a></li>
                 <li><Link to="/login" className="hover:text-white">Staff Login</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="mb-4">Follow Us</h3>
-              <div className="flex gap-4">
-                <Facebook className="w-6 h-6 cursor-pointer hover:text-green-400" />
-                <Instagram className="w-6 h-6 cursor-pointer hover:text-green-400" />
-                <Twitter className="w-6 h-6 cursor-pointer hover:text-green-400" />
+              <div className="flex gap-4 mb-4">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:text-green-400">
+                  <Facebook className="w-6 h-6" />
+                </a>
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-green-400">
+                  <Instagram className="w-6 h-6" />
+                </a>
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="hover:text-green-400">
+                  <Twitter className="w-6 h-6" />
+                </a>
+              </div>
+              <div className="text-gray-400">
+                <p className="flex items-center gap-2 mb-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>Colombo, Sri Lanka</span>
+                </p>
+                <p className="flex items-center gap-2">
+                  <Phone className="w-4 h-4" />
+                  <span>+94 11 234 5678</span>
+                </p>
               </div>
             </div>
           </div>
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 Smart Supermarket. All rights reserved.</p>
+            <p>&copy; 2026 Smart Supermarket. All rights reserved.</p>
           </div>
         </div>
       </footer>
