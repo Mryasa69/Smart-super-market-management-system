@@ -81,8 +81,13 @@ export default function HomePage() {
     fetchProducts();
   }, []);
 
-  const featuredList = realProducts.filter(p => p.specialOffers && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const weeklyList = realProducts.filter(p => p.weeklyDeals && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const normalizedQuery = searchQuery.toLowerCase();
+  const featuredList = realProducts.filter(
+    (p) => !!p?.specialOffers && (p?.name ?? '').toLowerCase().includes(normalizedQuery)
+  );
+  const weeklyList = realProducts.filter(
+    (p) => !!p?.weeklyDeals && (p?.name ?? '').toLowerCase().includes(normalizedQuery)
+  );
 
   // Countdown timer for weekly deals
   useEffect(() => {
@@ -115,7 +120,6 @@ export default function HomePage() {
 
     return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
     const employeeUser = apiService.getStoredUser();
     if (employeeUser?.role) {

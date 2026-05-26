@@ -14,10 +14,20 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin(origin, callback) {
+      // allow same-origin / server-to-server / tools like curl
+      if (!origin) return callback(null, true);
+
+      // allow any localhost port (vite may auto-pick 3001, 3002, ...)
+      if (/^http:\/\/localhost:\d+$/.test(origin)) return callback(null, true);
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(morgan('dev'));
 
