@@ -9,9 +9,9 @@ const categories = [
   { name: 'Dairy & Eggs', image: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=300&fit=crop' },
   { name: 'Bakery', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop' },
   { name: 'Meat & Seafood', image: 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop' },
-  { name: 'Beverages', image: 'https://images.unsplash.com/photo-1523677011781-c91d1bbe2f9d?w=400&h=300&fit=crop' },
+  { name: 'Beverages', image: 'https://images.unsplash.com/photo-1527960471264-932f39eb5846?q=80&w=1170&auto=format&fit=crop' },
   { name: 'Snacks & Sweets', image: 'https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=400&h=300&fit=crop' },
-  { name: 'Frozen Foods', image: 'https://images.unsplash.com/photo-1580621312534-f3f5e28eff85?w=400&h=300&fit=crop' },
+  { name: 'Frozen Foods', image: 'https://images.unsplash.com/photo-1589010588553-46e8e7c21788?q=80&w=1260&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' },
   { name: 'Personal Care', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400&h=300&fit=crop' },
 ];
 
@@ -407,7 +407,7 @@ export default function HomePage() {
               <li><a href="#categories" className="hover:text-green-200">Shop by Category</a></li>
               <li><a href="#offers" className="hover:text-green-200">Special Offers</a></li>
               <li><a href="#weekly-deals" className="hover:text-green-200">Weekly Deals</a></li>
-              <li><a href="#" className="hover:text-green-200">Contact Us</a></li>
+              <li><a href="/contact" className="hover:text-green-200">Contact Us</a></li>
             </ul>
           </div>
         </nav>
@@ -435,7 +435,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Shop by Category */}
+       {/* Shop by Category */}
       <section id="categories" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-gray-800 mb-8 text-center">Shop by Category</h2>
@@ -444,9 +444,14 @@ export default function HomePage() {
               <div
                 key={index}
                 className="group cursor-pointer"
+                onClick={() =>
+                navigate("/products", {
+                  state: { category: category.name }
+                })
+              }
               >
                 <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow">
-                  <img
+                  <img 
                     src={category.image}
                     alt={category.name}
                     className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
