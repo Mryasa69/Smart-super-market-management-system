@@ -5,6 +5,7 @@ dotenv.config();
 
 async function testConnection() {
   try {
+
     console.log('Testing MongoDB connection...');
     console.log('MongoDB URI:', process.env.MONGODB_URI ? 'Set' : 'NOT SET');
     
@@ -26,6 +27,7 @@ async function testConnection() {
   } catch (error) {
     console.error('❌ Database connection failed:', error.message);
     process.exit(1);
+    
   }
 }
 
