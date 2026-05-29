@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import { ArrowLeft, User, Heart, Award, ShoppingCart as CartIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
@@ -8,6 +8,11 @@ import { Label } from "../ui/label";
 
 export default function ProfileEdit() {
   const navigate = useNavigate();
+  const isAuthenticated = localStorage.getItem("user") || localStorage.getItem("customer");
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
 
   const [formData, setFormData] = useState({
     firstName: "",

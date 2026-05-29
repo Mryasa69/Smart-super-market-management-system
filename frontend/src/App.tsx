@@ -81,8 +81,8 @@ function App() {
           userRole === 'customer' ? <CustomerDashboard /> : <Navigate to="/login" />
         } />
         <Route path="/cart" element={<ShoppingCart />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/edit" element={<ProfileEdit />} />
+        <Route path="/profile" element={userRole ? <Profile /> : <Navigate to="/login" />} />
+        <Route path="/profile/edit" element={userRole ? <ProfileEdit /> : <Navigate to="/login" />} />
         <Route path="/orders/:orderId" element={<OrderDetails />} />
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />
