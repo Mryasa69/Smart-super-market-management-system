@@ -181,15 +181,51 @@ router.post('/login', [
   }
 });
 
+const { protect } = require('../middleware/auth');
+
 // @route   GET /api/customer-auth/profile
 // @desc    Get customer profile
 // @access   Private (customer)
-router.get('/profile', async (req, res) => {
+router.get('/profile', protect, async (req, res) => {
   try {
-    // This would need customer authentication middleware
+    const customer = await Customer.findById(req.user._id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
     res.json({
       success: true,
-      message: 'This endpoint needs customer authentication middleware'
+      data: customer
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// @route   PUT /api/customer-auth/profile
+// @desc    Update customer profile
+// @access   Private (customer)
+router.put('/profile', protect, async (req, res) => {
+  try {
+    const { name, phone, address, nicNumber } = req.body;
+    
+    // Find customer and update
+    const customer = await Customer.findByIdAndUpdate(
+      req.user._id,
+      { name, phone, address, nicNumber },
+      { new: true, runValidators: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: customer
     });
   } catch (error) {
     res.status(500).json({
