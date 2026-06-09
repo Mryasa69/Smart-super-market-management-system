@@ -2,14 +2,18 @@ import { useState,useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Search, ShoppingCart, User,Heart,ArrowLeft,SlidersHorizontal,} from "lucide-react";
 import { useNavigate,useLocation } from 'react-router-dom';
+import { apiService } from '../../services/api';
 
 export default function Products() {
   const [wishlist, setWishlist] = useState<number[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
-   const [addedToCart, setAddedToCart] = useState<number | null>(null);
-    const [cartCount, setCartCount] = useState(0);
+    const [addedToCart, setAddedToCart] = useState<number | null>(null);
+    const [cartCount, setCartCount] = useState(() => {
+      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+      return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    });
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -24,6 +28,27 @@ useEffect(() => {
     setSelectedCategory(location.state.category);
   }
 }, [location.state]);
+
+useEffect(() => {
+  const syncCart = async () => {
+    const customerToken = localStorage.getItem("customerToken");
+    if (customerToken) {
+      try {
+        const res = await apiService.getCart();
+        if (res.success && res.data) {
+          const items = res.data.items || [];
+          localStorage.setItem("cart", JSON.stringify(items));
+        }
+      } catch (err) {
+        console.error("Error syncing cart on products page mount:", err);
+      }
+    }
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    const total = cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    setCartCount(total);
+  };
+  syncCart();
+}, []);
 
     const updateCartCount = () => {
   const cart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -75,7 +100,7 @@ useEffect(() => {
 
 
   // 🛒 ADD TO CART (LOCALSTORAGE VERSION)
-  const handleAddToCart = (product: any) => {
+  const handleAddToCart = async (product: any) => {
   setCartCount(prev => prev + 1);
   setAddedToCart(product.id);
 
@@ -103,6 +128,20 @@ useEffect(() => {
 
   // ✅ Save to localStorage
   localStorage.setItem("cart", JSON.stringify(existingCart));
+
+  // ✅ Sync with MongoDB database if customer is logged in
+  const authToken = apiService.getStoredToken();
+  if (authToken) {
+    try {
+      const res = await apiService.saveCart(existingCart);
+      console.log("[Products] Cart save response:", res);
+      if (!res.success) {
+        console.error("[Products] Cart save failed:", res.message);
+      }
+    } catch (err) {
+      console.error("[Products] Error saving cart to DB:", err);
+    }
+  }
 
   // UI effects (same as yours)
   setTimeout(() => setAddedToCart(null), 2000);

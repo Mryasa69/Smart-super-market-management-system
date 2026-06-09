@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Textarea } from "../ui/textarea";
 import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { apiService } from "../../services/api";
 
 type CartItem = {
   id: number;
@@ -38,9 +39,37 @@ export default function ShoppingCart() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
 
-  // ✅ Save cart to localStorage whenever it changes
+  // Load database cart on mount
+  useEffect(() => {
+    const loadCartFromDb = async () => {
+      const token = localStorage.getItem("customerToken");
+      if (token) {
+        try {
+          const response = await apiService.getCart();
+          if (response.success && response.data) {
+            setCartItems(response.data.items || []);
+          }
+        } catch (err) {
+          console.error("Error loading cart from DB:", err);
+        }
+      }
+    };
+    loadCartFromDb();
+  }, []);
+
+  // ✅ Save cart to localStorage and database whenever it changes
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cartItems));
+    
+    const token = apiService.getStoredToken();
+    if (token) {
+      apiService.saveCart(cartItems).then(res => {
+        console.log("[ShoppingCart] Cart save response:", res);
+        if (!res.success) {
+          console.error("[ShoppingCart] Cart save failed:", res.message);
+        }
+      }).catch(err => console.error("[ShoppingCart] Error saving cart to DB:", err));
+    }
   }, [cartItems]);
 
   useEffect(() => {

@@ -44,7 +44,10 @@ const getDefaultImage = (name: string, category: string) => {
 export default function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
-  const [cartCount, setCartCount] = useState(0);
+  const [cartCount, setCartCount] = useState(() => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  });
   const [addedToCart, setAddedToCart] = useState<any>(null);
   const [timeLeft, setTimeLeft] = useState({
     days: 3,
@@ -79,6 +82,26 @@ export default function HomePage() {
       }
     };
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const loadCart = async () => {
+      const customerToken = localStorage.getItem('customerToken');
+      if (customerToken) {
+        try {
+          const res = await apiService.getCart();
+          if (res.success && res.data) {
+            const items = res.data.items || [];
+            localStorage.setItem("cart", JSON.stringify(items));
+            const count = items.reduce((sum: number, item: any) => sum + item.quantity, 0);
+            setCartCount(count);
+          }
+        } catch (err) {
+          console.error("Error loading cart on homepage:", err);
+        }
+      }
+    };
+    loadCart();
   }, []);
 
   const normalizedQuery = searchQuery.toLowerCase();
@@ -203,7 +226,7 @@ export default function HomePage() {
     window.location.href = '/login';
   };
 
-  const handleAddToCart = (
+  const handleAddToCart = async (
     productId: any,
     productName: string,
     productPrice: any,
@@ -239,6 +262,20 @@ export default function HomePage() {
 
     // ✅ Save to localStorage
     localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    // ✅ Sync with MongoDB database if customer is logged in
+    const authToken = apiService.getStoredToken();
+    if (authToken) {
+      try {
+        const res = await apiService.saveCart(existingCart);
+        console.log("[HomePage] Cart save response:", res);
+        if (!res.success) {
+          console.error("[HomePage] Cart save failed:", res.message);
+        }
+      } catch (err) {
+        console.error("[HomePage] Error saving cart to DB:", err);
+      }
+    }
 
     // UI effects (same as yours)
     setTimeout(() => setAddedToCart(null), 2000);

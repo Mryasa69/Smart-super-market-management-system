@@ -83,7 +83,9 @@ async function parseJsonSafe(res: Response) {
 
 const apiService = {
   getStoredToken(): string | null {
-    return localStorage.getItem('token');
+    // Prioritise customer token so cart & customer-facing endpoints
+    // don't accidentally use a stale admin/staff token.
+    return localStorage.getItem('customerToken') || localStorage.getItem('token');
   },
 
   getStoredUser(): AuthUser | null {
@@ -117,6 +119,7 @@ const apiService = {
     localStorage.removeItem('customer');
     localStorage.removeItem('rememberCustomer');
     localStorage.removeItem('customerProfile');
+    localStorage.removeItem('cart');
   },
 
   privateHeaders(): Record<string, string> {
@@ -309,6 +312,25 @@ const apiService = {
     });
     const data = await parseJsonSafe(res);
     return data as ApiResponse;
+  },
+
+  async getCart(): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async saveCart(items: any[]): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/cart`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify({ items }),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
   },
 };
 
