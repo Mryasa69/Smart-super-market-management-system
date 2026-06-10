@@ -89,6 +89,17 @@ export type CustomerOrder = {
   date?: string | Date;
 };
 
+export type StripeConfig = {
+  publishableKey: string;
+};
+
+export type StripeCheckoutResponse = {
+  orderId: string;
+  orderNumber: string;
+  sessionId: string;
+  url?: string;
+};
+
 type AuthUser = {
   _id: string;
   firstName?: string;
@@ -359,6 +370,40 @@ const apiService = {
     });
     const data = await parseJsonSafe(res);
     return data as ApiResponse<any>;
+  },
+
+  async getStripeConfig(): Promise<ApiResponse<StripeConfig>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders/stripe/config`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<StripeConfig>;
+  },
+
+  async createStripeOrder(payload: {
+    items: CustomerOrderItem[];
+    deliveryAddress: string;
+    contactPhone: string;
+    deliveryFee?: number;
+  }): Promise<ApiResponse<StripeCheckoutResponse>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders/stripe`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<StripeCheckoutResponse>;
+  },
+
+  async verifyStripeOrder(sessionId: string): Promise<ApiResponse<CustomerOrder>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders/stripe/verify`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify({ sessionId }),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerOrder>;
   },
 
   async getOrders(): Promise<ApiResponse<CustomerOrder[]>> {

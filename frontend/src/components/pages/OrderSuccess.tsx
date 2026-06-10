@@ -1,9 +1,54 @@
-import { Link, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ShoppingCart as CartIcon, PackageCheck, ArrowRight } from "lucide-react";
 import { Card } from "../ui/card";
+import { apiService } from "../../services/api";
 
 export function OrderSuccess() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [isFinalizing, setIsFinalizing] = useState(true);
+  const [message, setMessage] = useState("Finalizing your payment...");
+
+  useEffect(() => {
+    const finalizePayment = async () => {
+      const sessionId = searchParams.get("session_id");
+
+      if (!sessionId) {
+        setIsFinalizing(false);
+        setMessage("Your order was placed successfully.");
+        return;
+      }
+
+      try {
+        const response = await apiService.verifyStripeOrder(sessionId);
+        if (response.success && response.data) {
+          localStorage.removeItem("cart");
+          localStorage.setItem("customerOrders", JSON.stringify([response.data, ...JSON.parse(localStorage.getItem("customerOrders") || "[]").filter((order: any) => {
+            const existingId = order.orderNumber || order.id || order._id;
+            return existingId !== response.data.orderNumber;
+          })]));
+
+          try {
+            await apiService.saveCart([]);
+          } catch (error) {
+            console.error("[OrderSuccess] Failed to clear cart in DB:", error);
+          }
+
+          setMessage("Payment completed successfully.");
+        } else {
+          setMessage(response.message || "Payment confirmation is still processing.");
+        }
+      } catch (error) {
+        console.error("[OrderSuccess] Stripe verification failed:", error);
+        setMessage("Payment was received, but confirmation is still syncing.");
+      } finally {
+        setIsFinalizing(false);
+      }
+    };
+
+    finalizePayment();
+  }, [searchParams]);
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
@@ -64,9 +109,9 @@ export function OrderSuccess() {
               </div>
             </div>
 
-            <h2 className="text-2xl mb-3">Order Placed Successfully!</h2>
+            <h2 className="text-2xl mb-3">{isFinalizing ? "Securing your order..." : "Order Placed Successfully!"}</h2>
             <p className="text-gray-700 mb-6">
-              Thank you for your purchase. Your order is being processed.
+              {message}
             </p>
 
             <Link
