@@ -19,25 +19,26 @@ const getDefaultImage = (name: string, category: string) => {
   const lowerName = name.toLowerCase();
   const lowerCat = category.toLowerCase();
 
-  if (lowerName.includes('apple')) return 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&h=400&fit=crop';
-  if (lowerName.includes('milk')) return 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&h=400&fit=crop';
-  if (lowerName.includes('bread')) return 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=400&h=400&fit=crop';
-  if (lowerName.includes('chicken')) return 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&h=400&fit=crop';
-  if (lowerName.includes('juice')) return 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop';
-  if (lowerName.includes('chocolate')) return 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=400&h=400&fit=crop';
-  if (lowerName.includes('rice')) return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop';
-  if (lowerName.includes('salmon') || lowerName.includes('fish')) return 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop';
-  if (lowerName.includes('cheese')) return 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop';
-  if (lowerName.includes('cereal')) return 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop';
-  if (lowerName.includes('oil')) return 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop';
-  if (lowerName.includes('strawberry') || lowerName.includes('berry')) return 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop';
+  //if (lowerName.includes('apple')) return 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&h=400&fit=crop';
+  //if (lowerName.includes('milk')) return 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&h=400&fit=crop';
+  //if (lowerName.includes('bread')) return 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=400&h=400&fit=crop';
+  //if (lowerName.includes('chicken')) return 'https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=400&h=400&fit=crop';
+  //if (lowerName.includes('juice')) return 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop';
+  //if (lowerName.includes('chocolate')) return 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=400&h=400&fit=crop';
+  //if (lowerName.includes('rice')) return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop';
+  //if (lowerName.includes('salmon') || lowerName.includes('fish')) return 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop';
+  
+  
+  // if (lowerName.includes('cheese')) return 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop';
+  // if (lowerName.includes('cereal')) return 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop';
+  // if (lowerName.includes('oil')) return 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop';
+  // if (lowerName.includes('strawberry') || lowerName.includes('berry')) return 'https://images.unsplash.com/photo-1464965911861-746a04b4bca6?w=400&h=400&fit=crop';
+  // if (lowerCat.includes('fruit') || lowerCat.includes('veg')) return 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop';
+  // if (lowerCat.includes('dairy')) return 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=300&fit=crop';
+  // if (lowerCat.includes('bakery')) return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop';
+  // if (lowerCat.includes('meat')) return 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop';
 
-  if (lowerCat.includes('fruit') || lowerCat.includes('veg')) return 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop';
-  if (lowerCat.includes('dairy')) return 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=400&h=300&fit=crop';
-  if (lowerCat.includes('bakery')) return 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&h=300&fit=crop';
-  if (lowerCat.includes('meat')) return 'https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400&h=300&fit=crop';
-
-  return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
+  //return 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&h=400&fit=crop';
 };
 
 
@@ -232,7 +233,7 @@ export default function HomePage() {
     productPrice: any,
     productImage: string
   ) => {
-    setCartCount(prev => prev + 1);
+    setCartCount((prev: number) => prev + 1);
     setAddedToCart(productId);
 
     // ✅ Get existing cart
@@ -338,8 +339,10 @@ export default function HomePage() {
             {/* Right Side Icons */}
 
 
-            <div className="flex items-center gap-6">
-              <div className="relative" ref={accountMenuRef}>
+            <div className="flex items-center gap-6 ">
+              
+              <div className="relative cursor-pointer" ref={accountMenuRef}>
+                
                 <button
                   onClick={() => setIsAccountMenuOpen((prev) => !prev)}
                   className="flex flex-col items-center gap-1 hover:text-green-700"
@@ -353,15 +356,17 @@ export default function HomePage() {
 
                 {isAccountMenuOpen && (
                   <div
-                    className="absolute right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+                    className="absolute right-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-2 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 cursor-pointer"
                     style={{ width: '150px' }}
                   >
                     {!memberRole ? (
                       <div className="px-4 py-3 space-y-3">
+
                         <div className="space-y-1">
                           <p className="text-sm font-bold text-gray-800">Welcome Guest!</p>
                           <p className="text-xs text-gray-500">Sign in to manage your orders and loyalty points.</p>
                         </div>
+
                         <button
                           onClick={() => {
                             navigate('/login');
@@ -372,11 +377,13 @@ export default function HomePage() {
                           <LogOut className="w-4 h-4 rotate-180" />
                           Sign In
                         </button>
+
                         <div className="flex items-center gap-2 py-1">
                           <div className="flex-1 h-[1px] bg-gray-100"></div>
                           <span className="text-[10px] text-gray-400 uppercase font-bold">New here?</span>
                           <div className="flex-1 h-[1px] bg-gray-100"></div>
                         </div>
+
                         <button
                           onClick={() => {
                             navigate('/customer-register');
@@ -386,14 +393,17 @@ export default function HomePage() {
                         >
                           Create Account
                         </button>
+
                       </div>
                     ) : (
                       <>
-                        <div className="px-4 pb-2 border-b border-gray-100">
+
+                        <div className="px-4 pb-2 border-b border-gray-100 cursor-pointer">
                           <p className="text-sm font-bold text-gray-800 truncate">{memberDisplayName}</p>
                           {memberEmail && <p className="text-xs text-gray-500 truncate">{memberEmail}</p>}
                         </div>
-                        <div className="py-1">
+
+                        <div className="py-1 cursor-pointer">
                           <p className="px-4 py-2 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Activities</p>
                           {accountMenuItems.map((item) => (
                             <button
@@ -402,27 +412,30 @@ export default function HomePage() {
                                 navigate(item.path);
                                 setIsAccountMenuOpen(false);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors cursor-pointer"
                             >
                               {item.label}
                             </button>
                           ))}
                         </div>
-                        <div className="border-t border-gray-100 mt-1 pt-1">
+
+                        <div className="border-t border-gray-100 mt-1 pt-1 cursor-pointer">
                           <button
                             onClick={handleLogout}
-                            className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium transition-colors"
+                            className="w-full flex items-center gap-2 text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium transition-colors cursor-pointer"
                           >
                             <LogOut className="w-4 h-4" />
                             Logout
                           </button>
                         </div>
+
                       </>
                     )}
                   </div>
                 )}
               </div>
-              <button onClick={() => navigate('/cart')} className="flex flex-col items-center gap-1 relative hover:text-green-700"
+
+              <button onClick={() => navigate('/cart')} className="flex flex-col items-center gap-1 relative hover:text-green-700 cursor-pointer"
               >
                 <ShoppingCart className="w-6 h-6" />
                 {cartCount > 0 && (
@@ -432,6 +445,7 @@ export default function HomePage() {
                 )}
                 <span className="text-sm">Cart</span>
               </button>
+
             </div>
           </div>
         </div>
