@@ -61,6 +61,34 @@ export type PurchaseOrder = {
   notes?: string;
 };
 
+export type CustomerOrderItem = {
+  id: string;
+  name: string;
+  price: number;
+  pricePerKg?: string;
+  image?: string;
+  quantity: number;
+  total: number;
+};
+
+export type CustomerOrder = {
+  _id: string;
+  id?: string;
+  orderNumber: string;
+  customerId?: string;
+  items: CustomerOrderItem[];
+  itemCount: number;
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  deliveryAddress: string;
+  contactPhone: string;
+  status: 'Processing' | 'Confirmed' | 'Packed' | 'Out for Delivery' | 'Completed' | 'Cancelled' | string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  date?: string | Date;
+};
+
 type AuthUser = {
   _id: string;
   firstName?: string;
@@ -331,6 +359,39 @@ const apiService = {
     });
     const data = await parseJsonSafe(res);
     return data as ApiResponse<any>;
+  },
+
+  async getOrders(): Promise<ApiResponse<CustomerOrder[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerOrder[]>;
+  },
+
+  async getOrder(id: string): Promise<ApiResponse<CustomerOrder>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders/${id}`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerOrder>;
+  },
+
+  async createOrder(payload: {
+    items: CustomerOrderItem[];
+    deliveryAddress: string;
+    contactPhone: string;
+    deliveryFee?: number;
+  }): Promise<ApiResponse<CustomerOrder>> {
+    const res = await fetch(`${API_BASE_URL}/api/orders`, {
+      method: 'POST',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerOrder>;
   },
 };
 

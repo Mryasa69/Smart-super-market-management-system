@@ -8,7 +8,7 @@ import { ImageWithFallback } from "../figma/ImageWithFallback";
 import { apiService } from "../../services/api";
 
 type CartItem = {
-  id: number;
+  id: string | number;
   name: string;
   price: number;        
   pricePerKg: string;
@@ -38,6 +38,7 @@ export default function ShoppingCart() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   // Load database cart on mount
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function ShoppingCart() {
   const total = subtotal + deliveryFee;
 
   // ✅ Update quantity
-const updateQuantity = (id: number, change: number) => {
+const updateQuantity = (id: string | number, change: number) => {
   setCartItems((items: CartItem[]) =>
     items.map((item: CartItem) =>
       item.id === id
@@ -107,48 +108,79 @@ const updateQuantity = (id: number, change: number) => {
 };
 
   // ✅ Remove item
- const removeItem = (id: number) => {
+ const removeItem = (id: string | number) => {
   setCartItems((items: CartItem[]) =>
     items.filter((item) => item.id !== id)
   );
 };
 
   // ✅ Place order
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim() || !customerProfile.phone?.trim()) {
       setCheckoutError("Please add your address and contact number in My Profile before placing the order.");
       return;
     }
 
-    const existingOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
-    const newOrder = {
-      id: `ORD-${Date.now().toString().slice(-6)}`,
-      date: new Date().toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }),
-      status: "Processing",
-      items: cartItems.map((item: CartItem) => ({
-        name: item.name,
-        image: item.image,
-        price: item.price,
-        pricePerKg: item.pricePerKg,
-        quantity: item.quantity,
-        total: item.price * item.quantity,
-      })),
-      itemCount: cartItems.length,
-      subtotal,
-      deliveryFee,
-      total,
-      deliveryAddress: deliveryAddress.trim(),
-      contactPhone: customerProfile.phone,
+    setIsPlacingOrder(true);
+    setCheckoutError("");
+
+    const normalizedItems = cartItems.map((item: CartItem) => ({
+      id: String(item.id),
+      name: item.name,
+      price: item.price,
+      pricePerKg: item.pricePerKg,
+      image: item.image,
+      quantity: item.quantity,
+      total: item.price * item.quantity,
+    }));
+
+    const cacheOrder = (order: any) => {
+      const storedOrder = {
+        ...order,
+        id: order.id || order.orderNumber || order._id,
+        orderNumber: order.orderNumber || order.id || order._id,
+        date: order.date || order.createdAt || new Date().toISOString(),
+      };
+
+      const existingOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+      const nextOrders = [
+        storedOrder,
+        ...existingOrders.filter((existing: any) => {
+          const existingId = existing.orderNumber || existing.id || existing._id;
+          return existingId !== storedOrder.orderNumber;
+        }),
+      ];
+
+      localStorage.setItem("customerOrders", JSON.stringify(nextOrders));
     };
 
-    localStorage.setItem("customerOrders", JSON.stringify([newOrder, ...existingOrders]));
-    localStorage.removeItem("cart"); // clear cart
-    setCartItems([]);
-    navigate("/order-success");
+    try {
+      const response = await apiService.createOrder({
+        items: normalizedItems,
+        deliveryAddress: deliveryAddress.trim(),
+        contactPhone: customerProfile.phone,
+        deliveryFee,
+      });
+
+      if (response.success && response.data) {
+        cacheOrder(response.data);
+        localStorage.removeItem("cart");
+        try {
+          await apiService.saveCart([]);
+        } catch (error) {
+          console.error("[ShoppingCart] Error clearing cart in DB:", error);
+        }
+        setCartItems([]);
+        navigate("/order-success");
+      } else {
+        setCheckoutError(response.message || "Unable to save the order right now. Please try again.");
+      }
+    } catch (error) {
+      console.error("[ShoppingCart] Error creating order:", error);
+      setCheckoutError("Unable to save the order right now. Please try again.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   // ✅ EMPTY CART UI
@@ -388,9 +420,10 @@ const updateQuantity = (id: number, change: number) => {
 
                 <Button
                   onClick={handlePlaceOrder}
+                  disabled={isPlacingOrder}
                   className="w-full mb-2 bg-green-600 hover:bg-green-700"
                 >
-                  Place Order
+                  {isPlacingOrder ? "Placing Order..." : "Place Order"}
                 </Button>
 
                 <Button

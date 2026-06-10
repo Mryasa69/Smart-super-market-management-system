@@ -1,21 +1,70 @@
-import { useParams, useNavigate, Link } from "react-router";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Package, CheckCircle, Clock } from "lucide-react";
 import { Card } from "../ui/card";
+import { apiService, CustomerOrder } from "../../services/api";
 
 export function OrderDetails() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const orders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
-  const order = orders.find((o: any) => o.id === orderId);
+  useEffect(() => {
+    const loadOrder = async () => {
+      if (!orderId) {
+        setError("Order not found");
+        setIsLoading(false);
+        return;
+      }
+
+      const localOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+      const localMatch = localOrders.find(
+        (item: CustomerOrder) => item.id === orderId || item.orderNumber === orderId || item._id === orderId
+      );
+
+      const token = apiService.getStoredToken();
+      if (!token) {
+        setOrder(localMatch || null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await apiService.getOrder(orderId);
+        if (response.success && response.data) {
+          setOrder(response.data);
+          setError("");
+        } else {
+          setOrder(localMatch || null);
+          setError(response.message || "Showing locally cached order details.");
+        }
+      } catch (err) {
+        console.error("Error loading order:", err);
+        setOrder(localMatch || null);
+        setError("Showing locally cached order details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrder();
+  }, [orderId]);
+
+  if (isLoading) {
+    return <div className="max-w-4xl mx-auto p-4 md:p-6">Loading order...</div>;
+  }
 
   if (!order) {
     return (
       <div className="max-w-4xl mx-auto p-4 md:p-6">
-        <p>Order not found</p>
+        <p>{error || "Order not found"}</p>
       </div>
     );
   }
+
+  const resolvedOrderId = order.id || order.orderNumber || order._id;
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
@@ -47,8 +96,14 @@ export function OrderDetails() {
       <Card className="p-6">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h2 className="text-2xl mb-1">Order {order.id}</h2>
-            <p className="text-gray-600">Placed on {order.date}</p>
+            <h2 className="text-2xl mb-1">Order {resolvedOrderId}</h2>
+            <p className="text-gray-600">
+              Placed on {new Date(order.date || order.createdAt || Date.now()).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
           </div>
           <div
             className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
