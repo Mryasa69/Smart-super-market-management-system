@@ -15,6 +15,15 @@ const customerSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    googleId: {
+      type: String,
+      default: null,
+    },
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local',
+    },
     phone: {
       type: String,
       required: [true, 'Phone is required'],

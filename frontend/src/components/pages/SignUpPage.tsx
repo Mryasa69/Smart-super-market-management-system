@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard } from 'lucide-react';
+import { GoogleAuthSection } from '../auth/GoogleAuthSection';
 
-export default function SignUpPage() {
+interface SignUpPageProps {
+  onLogin: (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => void;
+}
+
+export default function SignUpPage({ onLogin }: SignUpPageProps) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
@@ -337,6 +342,12 @@ export default function SignUpPage() {
               {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
           </form>
+
+          <GoogleAuthSection
+            mode="signup"
+            onLogin={() => onLogin('customer')}
+            onError={(message) => setErrors((prev) => ({ ...prev, general: message }))}
+          />
 
           {/* Sign In Link */}
           <div className="mt-6 text-center">

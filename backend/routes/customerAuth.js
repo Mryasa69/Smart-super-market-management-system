@@ -5,6 +5,12 @@ const Customer = require('../models/Customer');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const generateRandomPassword = () => {
+  const base = Math.random().toString(36).slice(2);
+  const stamp = Date.now().toString(36);
+  return `Gg#${base}${stamp}A1!`;
+};
+
 // Password validation function
 const validatePassword = (password) => {
   const errors = [];
@@ -177,6 +183,106 @@ router.post('/login', [
     res.status(500).json({
       success: false,
       message: error.message
+    });
+  }
+});
+
+// @route   POST /api/customer-auth/google-login
+// @desc    Login/register customer with Google OAuth access token
+// @access  Public
+router.post('/google-login', [
+  body('accessToken').notEmpty().withMessage('Google access token is required'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array(),
+      });
+    }
+
+    const { accessToken } = req.body;
+
+    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!googleRes.ok) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid Google token',
+      });
+    }
+
+    const googleUser = await googleRes.json();
+
+    if (!googleUser?.email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Google account email is unavailable',
+      });
+    }
+
+    let customer = await Customer.findOne({ email: googleUser.email });
+
+    if (!customer) {
+      customer = await Customer.create({
+        name: googleUser.name || `${googleUser.given_name || ''} ${googleUser.family_name || ''}`.trim() || 'Google Customer',
+        email: googleUser.email,
+        phone: `google-${(googleUser.sub || Date.now().toString()).slice(-10)}`,
+        password: generateRandomPassword(),
+        googleId: googleUser.sub || null,
+        authProvider: 'google',
+      });
+    } else {
+      let changed = false;
+      if (!customer.googleId && googleUser.sub) {
+        customer.googleId = googleUser.sub;
+        changed = true;
+      }
+      if (customer.authProvider !== 'google') {
+        customer.authProvider = 'google';
+        changed = true;
+      }
+      if ((!customer.name || customer.name === 'Customer') && googleUser.name) {
+        customer.name = googleUser.name;
+        changed = true;
+      }
+
+      if (changed) {
+        await customer.save();
+      }
+    }
+
+    const token = jwt.sign(
+      { id: customer._id, type: 'customer' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: 'Google login successful',
+      data: {
+        token,
+        customer: {
+          id: customer._id,
+          name: customer.name,
+          email: customer.email,
+          phone: customer.phone,
+          tier: customer.tier,
+          loyaltyPoints: customer.loyaltyPoints,
+        },
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 });

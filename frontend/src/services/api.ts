@@ -192,6 +192,17 @@ const apiService = {
     return data as ApiResponse<any>;
   },
 
+  async customerGoogleLogin(accessToken: string): Promise<ApiResponse<{ customer: any; token: string }>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/google-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken }),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
   async getDashboardData(): Promise<ApiResponse<any>> {
     const res = await fetch(`${API_BASE_URL}/api/dashboard`, {
       method: 'GET',

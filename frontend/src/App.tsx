@@ -25,7 +25,8 @@ import { apiService } from "./services/api";
 import AboutUsPage from "./components/pages/AboutUsPage";
 import ContactUsPage from "./components/pages/ContactUSPage";
 import Products from "./components/pages/Products";
-import ServicesPage from "./components/pages/ServicesPage"; 
+import ServicesPage from "./components/pages/ServicesPage";
+
 
 
 function App() {
@@ -69,13 +70,12 @@ function App() {
   }
 
   return (
-
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<HomePage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
-        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/signup" element={<SignUpPage onLogin={handleLogin} />} />
         <Route path="/customer-register" element={<CustomerRegister />} />
         <Route path="/customer-dashboard" element={
           userRole === 'customer' ? <CustomerDashboard /> : <Navigate to="/login" />
@@ -124,7 +124,6 @@ function App() {
         {/* Catch-all route for unmatched paths */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-
   );
 }
 
