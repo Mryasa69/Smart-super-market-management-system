@@ -330,7 +330,14 @@ export default function HomePage() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-full pr-12 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-700 text-white p-2 rounded-full hover:bg-green-800">
+                <button
+                  onClick={() => {
+                    navigate("/products", {
+                      state: { search: searchQuery }
+                    });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-700 text-white p-2 rounded-full hover:bg-green-800"
+                >
                   <Search className="w-5 h-5" />
                 </button>
               </div>

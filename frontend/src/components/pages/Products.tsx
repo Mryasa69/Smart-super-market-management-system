@@ -6,22 +6,26 @@ import { apiService } from '../../services/api';
 
 export default function Products() {
   const [wishlist, setWishlist] = useState<number[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
+  const location = useLocation();
+  const [searchQuery, setSearchQuery] = useState(
+    location.state?.search || ""
+  );
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
-    const [addedToCart, setAddedToCart] = useState<number | null>(null);
-    const [cartCount, setCartCount] = useState(() => {
-      const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
-    });
-    const navigate = useNavigate();
-    const location = useLocation();
+  const [addedToCart, setAddedToCart] = useState<number | null>(null);
+  const [cartCount, setCartCount] = useState(() => {
+    const cart = JSON.parse(localStorage.getItem("cart") || "[]");
+    return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  });
+  const navigate = useNavigate();
 
     console.log(location.state);
 
     const [selectedCategory, setSelectedCategory] = useState(
   location.state?.category || "All Products"
 );
+
+
 
 useEffect(() => {
   if (location.state?.category) {
@@ -101,7 +105,7 @@ useEffect(() => {
 
   // 🛒 ADD TO CART (LOCALSTORAGE VERSION)
   const handleAddToCart = async (product: any) => {
-  setCartCount(prev => prev + 1);
+  setCartCount((prev: number) => prev + 1);
   setAddedToCart(product.id);
 
   // ✅ Get existing cart
