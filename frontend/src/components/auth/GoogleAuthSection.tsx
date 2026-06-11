@@ -65,7 +65,7 @@ function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
           }
 
           onLogin('customer');
-          navigate('/customer-dashboard');
+          navigate('/');
         } else {
           onError(response.message || 'Google sign-in failed. Please try again.');
         }
