@@ -100,11 +100,7 @@ export default function AboutUsPage() {
               alt="Shopping Experience"
               className="rounded-lg shadow-md -mt-8"
             />
-            <img 
-              src="https://images.unsplash.com/photo-1559305616-3dbc0e105d1f?w=400&h=300&fit=crop" 
-              alt="Customer Service"
-              className="rounded-lg shadow-md"
-            />
+           
           </div>
         </div>
       </section>
