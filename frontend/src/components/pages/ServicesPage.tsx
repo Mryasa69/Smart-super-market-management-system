@@ -167,10 +167,7 @@ export default function ServicesPage() {
                 <div className="bg-white p-6">
                   <h3 className="text-gray-800 mb-2">{service.title}</h3>
                   <p className="text-gray-600 text-sm mb-4">{service.description}</p>
-                  <button className="text-green-700 hover:text-green-800 flex items-center gap-2">
-                    Learn More
-                    <span>→</span>
-                  </button>
+                  
                 </div>
               </div>
             ))}
