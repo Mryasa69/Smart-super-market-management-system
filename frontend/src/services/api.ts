@@ -203,6 +203,28 @@ const apiService = {
     return data as ApiResponse<any>;
   },
 
+  async forgotPassword(email: string): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async resetPassword(token: string, password: string): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password }),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
   async getDashboardData(): Promise<ApiResponse<any>> {
     const res = await fetch(`${API_BASE_URL}/api/dashboard`, {
       method: 'GET',

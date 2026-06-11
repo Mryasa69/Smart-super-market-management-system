@@ -26,6 +26,8 @@ import AboutUsPage from "./components/pages/AboutUsPage";
 import ContactUsPage from "./components/pages/ContactUSPage";
 import Products from "./components/pages/Products";
 import ServicesPage from "./components/pages/ServicesPage";
+import ForgotPasswordPage from "./components/pages/ForgotPasswordPage";
+import ResetPasswordPage from "./components/pages/ResetPasswordPage";
 
 
 
@@ -90,6 +92,8 @@ function App() {
         <Route path="/contact" element={<ContactUsPage />} />
         <Route path="/products" element={<Products />} />
         <Route path="/services" element={<ServicesPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected pages */}
         <Route path="/dashboard" element={

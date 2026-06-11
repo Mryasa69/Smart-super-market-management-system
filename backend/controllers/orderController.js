@@ -101,7 +101,7 @@ exports.createStripeOrder = async (req, res) => {
     const total = subtotal + deliveryFee;
     const orderNumber = generateOrderNumber();
     const stripe = getStripeInstance();
-    const origin = req.headers.origin || process.env.CLIENT_URL || 'http://localhost:5173';
+    const origin = req.headers.origin || process.env.CLIENT_URL || 'http://localhost:3000';
 
     const order = await Order.create({
       orderNumber,
