@@ -1,45 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { body, validationResult } = require('express-validator');
-const Customer = require('../models/Customer');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-
-// Password validation function
-const validatePassword = (password) => {
-  const errors = [];
-  
-  // Minimum 8 characters
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  }
-  
-  // At least one lowercase letter
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-  
-  // At least one uppercase letter
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-  
-  // At least one number
-  if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-  
-  // At least one special character
-  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
-    errors.push('Password must contain at least one special character');
-  }
-  
-  return errors;
-};
+const { body } = require('express-validator');
+const { protect } = require('../middleware/auth');
+const {
+  validatePassword,
+  register,
+  login,
+  googleLogin,
+  getProfile,
+  updateProfile
+} = require('../controllers/customerAuthController');
 
 // @route   POST /api/customer-auth/register
-// @desc    Register a new customer
-// @access   Public
 router.post('/register', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Please enter a valid email'),
@@ -51,188 +23,23 @@ router.post('/register', [
     }
     return true;
   }).withMessage('Password does not meet requirements'),
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
-
-    const { name, email, phone, password } = req.body;
-
-    // Check if customer already exists
-    const existingCustomer = await Customer.findOne({ 
-      $or: [{ email }, { phone }] 
-    });
-    
-    if (existingCustomer) {
-      return res.status(400).json({
-        success: false,
-        message: existingCustomer.email === email ? 'Email already registered' : 'Phone number already registered'
-      });
-    }
-
-    // Create new customer
-    const customer = await Customer.create({
-      name,
-      email,
-      phone,
-      password, // Will be hashed by pre-save hook
-    });
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: customer._id, type: 'customer' },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful',
-      data: {
-        token,
-        customer: {
-          id: customer._id,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          tier: customer.tier,
-          loyaltyPoints: customer.loyaltyPoints
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
+], register);
 
 // @route   POST /api/customer-auth/login
-// @desc    Login customer
-// @access   Public
 router.post('/login', [
   body('email').isEmail().withMessage('Please enter a valid email'),
   body('password').notEmpty().withMessage('Password is required'),
-], async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: errors.array()
-      });
-    }
+], login);
 
-    const { email, password } = req.body;
-
-    // Find customer by email
-    const customer = await Customer.findOne({ email }).select('+password');
-    if (!customer) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, customer.password);
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid email or password'
-      });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: customer._id, type: 'customer' },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      message: 'Login successful',
-      data: {
-        token,
-        customer: {
-          id: customer._id,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          tier: customer.tier,
-          loyaltyPoints: customer.loyaltyPoints
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-const { protect } = require('../middleware/auth');
+// @route   POST /api/customer-auth/google-login
+router.post('/google-login', [
+  body('accessToken').notEmpty().withMessage('Google access token is required'),
+], googleLogin);
 
 // @route   GET /api/customer-auth/profile
-// @desc    Get customer profile
-// @access   Private (customer)
-router.get('/profile', protect, async (req, res) => {
-  try {
-    const customer = await Customer.findById(req.user._id);
-    if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found' });
-    }
-    res.json({
-      success: true,
-      data: customer
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
+router.get('/profile', protect, getProfile);
 
 // @route   PUT /api/customer-auth/profile
-// @desc    Update customer profile
-// @access   Private (customer)
-router.put('/profile', protect, async (req, res) => {
-  try {
-    const { name, phone, address, nicNumber } = req.body;
-    
-    // Find customer and update
-    const customer = await Customer.findByIdAndUpdate(
-      req.user._id,
-      { name, phone, address, nicNumber },
-      { new: true, runValidators: true }
-    );
-
-    if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found' });
-    }
-
-    res.json({
-      success: true,
-      message: 'Profile updated successfully',
-      data: customer
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
+router.put('/profile', protect, updateProfile);
 
 module.exports = router;

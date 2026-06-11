@@ -74,7 +74,7 @@ export default function CustomerLogin() {
         password: formData.password
       });
 
-      if (data.success) {
+      if (data.success && data.data) {
         // Store token in localStorage
         localStorage.setItem('customerToken', data.data.token);
         localStorage.setItem('customer', JSON.stringify(data.data.customer));

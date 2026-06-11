@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { GoogleAuthSection } from '../auth/GoogleAuthSection';
 
 interface LoginPageProps {
   onLogin: (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => void;
@@ -17,8 +18,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -31,35 +30,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true);
 
     try {
-      // Clear any existing sessions
       apiService.clearAllAuth();
-      
-      // Try staff login first
-      let response = await apiService.staffLogin(formData);
-      
-      if (response.success && response.data && response.data.token) {
-        // Staff login successful
-        apiService.saveAuthData(response.data.token, response.data);
-        
-        const role = response.data.role;
+
+      const staffResponse = await apiService.staffLogin(formData);
+
+      if (staffResponse.success && staffResponse.data && staffResponse.data.token) {
+        apiService.saveAuthData(staffResponse.data.token, staffResponse.data);
+
+        const role = staffResponse.data.role;
         onLogin(role);
 
-        // Redirect based on role
         if (role === 'admin') navigate('/dashboard');
         else if (role === 'cashier') navigate('/pos');
         else if (role === 'stock_manager') navigate('/inventory');
         else if (role === 'customer') navigate('/customer-dashboard');
-        else {
-          // For any successful login, redirect to home page
-          navigate('/');
-        }
+        else navigate('/');
       } else {
-        // Try customer login if staff login failed
-        response = await apiService.customerLogin(formData);
-        
-        if (response.success && response.data && response.data.token) {
-          // Customer login successful
-          apiService.saveCustomerAuthData(response.data.token, response.data.customer);
+        const customerResponse = await apiService.customerLogin(formData);
+
+        if (customerResponse.success && customerResponse.data && customerResponse.data.token) {
+          apiService.saveCustomerAuthData(customerResponse.data.token, customerResponse.data.customer);
 
           try {
             const cartRes = await apiService.getCart();
@@ -69,12 +59,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           } catch (cartError) {
             console.error('Error ensuring customer cart on login:', cartError);
           }
-          
+
           onLogin('customer');
-          navigate('/');
           navigate('/customer-dashboard');
         } else {
-          setError(response.message || 'Invalid email or password');
+          setError(customerResponse.message || 'Invalid email or password');
         }
       }
     } catch (error) {
@@ -87,7 +76,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-green-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-4">
             <ShoppingCart className="w-12 h-12 text-green-700" />
@@ -98,7 +86,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </Link>
         </div>
 
-        {/* Login Form */}
         <div className="bg-white rounded-lg shadow-xl p-8">
           <h2 className="text-red-700 mb-2 text-center font-bold">LOGIN</h2>
           <p className="text-gray-600 text-center mb-6">Staff & Customer Access</p>
@@ -110,7 +97,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-gray-700 mb-2">
                 Email Address
@@ -129,7 +115,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label htmlFor="password" className="block text-gray-700 mb-2">
                 Password
@@ -155,7 +140,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </div>
             </div>
 
-            {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2">
                 <input type="checkbox" className="w-4 h-4 text-green-600 rounded" />
@@ -166,7 +150,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               </a>
             </div>
 
-            {/* Log In Button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -176,7 +159,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </button>
           </form>
 
-          {/* Sign Up Link */}
+          <GoogleAuthSection
+            mode="login"
+            onLogin={() => onLogin('customer')}
+            onError={setError}
+          />
+
           <div className="mt-6 text-center">
             <p className="text-gray-600">
               Don&apos;t have an account?{' '}
@@ -186,7 +174,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             </p>
           </div>
 
-          {/* Back to Home */}
           <div className="mt-4 text-center">
             <Link to="/" className="text-gray-500 hover:text-gray-700">
               &larr; Back to Home

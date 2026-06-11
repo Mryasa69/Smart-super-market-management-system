@@ -92,6 +92,28 @@ const orderSchema = new mongoose.Schema(
       enum: ['Processing', 'Confirmed', 'Packed', 'Out for Delivery', 'Completed', 'Cancelled'],
       default: 'Processing',
     },
+    paymentMethod: {
+      type: String,
+      enum: ['stripe', 'cash', 'card', 'online'],
+      default: 'stripe',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'paid', 'failed'],
+      default: 'paid',
+    },
+    stripeSessionId: {
+      type: String,
+      default: null,
+    },
+    stripePaymentIntentId: {
+      type: String,
+      default: null,
+    },
+    paidAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

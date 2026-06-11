@@ -121,9 +121,6 @@ const updateQuantity = (id: string | number, change: number) => {
       return;
     }
 
-    setIsPlacingOrder(true);
-    setCheckoutError("");
-
     const normalizedItems = cartItems.map((item: CartItem) => ({
       id: String(item.id),
       name: item.name,
@@ -134,50 +131,26 @@ const updateQuantity = (id: string | number, change: number) => {
       total: item.price * item.quantity,
     }));
 
-    const cacheOrder = (order: any) => {
-      const storedOrder = {
-        ...order,
-        id: order.id || order.orderNumber || order._id,
-        orderNumber: order.orderNumber || order.id || order._id,
-        date: order.date || order.createdAt || new Date().toISOString(),
-      };
-
-      const existingOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
-      const nextOrders = [
-        storedOrder,
-        ...existingOrders.filter((existing: any) => {
-          const existingId = existing.orderNumber || existing.id || existing._id;
-          return existingId !== storedOrder.orderNumber;
-        }),
-      ];
-
-      localStorage.setItem("customerOrders", JSON.stringify(nextOrders));
-    };
-
     try {
-      const response = await apiService.createOrder({
+      setIsPlacingOrder(true);
+      setCheckoutError("");
+
+      const response = await apiService.createStripeOrder({
         items: normalizedItems,
         deliveryAddress: deliveryAddress.trim(),
         contactPhone: customerProfile.phone,
         deliveryFee,
       });
 
-      if (response.success && response.data) {
-        cacheOrder(response.data);
-        localStorage.removeItem("cart");
-        try {
-          await apiService.saveCart([]);
-        } catch (error) {
-          console.error("[ShoppingCart] Error clearing cart in DB:", error);
-        }
-        setCartItems([]);
-        navigate("/order-success");
-      } else {
+      if (!response.success || !response.data?.url) {
         setCheckoutError(response.message || "Unable to save the order right now. Please try again.");
+        return;
       }
+
+      window.location.href = response.data.url;
     } catch (error) {
       console.error("[ShoppingCart] Error creating order:", error);
-      setCheckoutError("Unable to save the order right now. Please try again.");
+      setCheckoutError(error instanceof Error ? error.message : "Unable to save the order right now. Please try again.");
     } finally {
       setIsPlacingOrder(false);
     }
@@ -423,7 +396,7 @@ const updateQuantity = (id: string | number, change: number) => {
                   disabled={isPlacingOrder}
                   className="w-full mb-2 bg-green-600 hover:bg-green-700"
                 >
-                  {isPlacingOrder ? "Placing Order..." : "Place Order"}
+                  {isPlacingOrder ? "Redirecting to Secure Checkout..." : "Pay with Stripe"}
                 </Button>
 
                 <Button

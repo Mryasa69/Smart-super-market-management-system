@@ -4,7 +4,7 @@
   "description": "Backend API for Smart Supermarket Management System",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "dev": "nodemon server.js",
     "seed": "node seeds/seed.js"
   },
@@ -16,7 +16,8 @@
     "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.0",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "stripe": "^22.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
