@@ -60,6 +60,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         if (response.success && response.data && response.data.token) {
           // Customer login successful
           apiService.saveCustomerAuthData(response.data.token, response.data.customer);
+
+          try {
+            const cartRes = await apiService.getCart();
+            if (cartRes.success && cartRes.data) {
+              localStorage.setItem('cart', JSON.stringify(cartRes.data.items || []));
+            }
+          } catch (cartError) {
+            console.error('Error ensuring customer cart on login:', cartError);
+          }
           
           onLogin('customer');
           navigate('/');

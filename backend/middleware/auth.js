@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Customer = require('../models/Customer');
 
 // Protect routes - require authentication
 const protect = async (req, res, next) => {
@@ -9,7 +10,15 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
+      
+      if (decoded.type === 'customer') {
+        req.user = await Customer.findById(decoded.id).select('-password');
+        if (req.user) {
+          req.user.role = 'customer';
+        }
+      } else {
+        req.user = await User.findById(decoded.id).select('-password');
+      }
 
       if (!req.user) {
         return res.status(401).json({ success: false, message: 'User not found' });

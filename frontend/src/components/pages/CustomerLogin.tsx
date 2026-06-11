@@ -79,6 +79,16 @@ export default function CustomerLogin() {
         localStorage.setItem('customerToken', data.data.token);
         localStorage.setItem('customer', JSON.stringify(data.data.customer));
         
+        // Fetch cart from database and store in localStorage
+        try {
+          const cartRes = await apiService.getCart();
+          if (cartRes.success && cartRes.data) {
+            localStorage.setItem("cart", JSON.stringify(cartRes.data.items || []));
+          }
+        } catch (err) {
+          console.error("Error fetching cart on login:", err);
+        }
+        
         // Store remember preference
         if (rememberMe) {
           localStorage.setItem('rememberCustomer', 'true');

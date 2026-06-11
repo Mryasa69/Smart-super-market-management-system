@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Eye, EyeOff, Check, X } from 'lucide-react';
+import { apiService } from '../../services/api';
 
 interface FormData {
   name: string;
@@ -149,6 +150,15 @@ export default function CustomerRegister() {
         // Store token in localStorage
         localStorage.setItem('customerToken', data.data.token);
         localStorage.setItem('customer', JSON.stringify(data.data.customer));
+
+        try {
+          const cartRes = await apiService.getCart();
+          if (cartRes.success && cartRes.data) {
+            localStorage.setItem('cart', JSON.stringify(cartRes.data.items || []));
+          }
+        } catch (cartError) {
+          console.error('Error ensuring customer cart on register:', cartError);
+        }
         
         // Redirect to home page
         navigate('/');
