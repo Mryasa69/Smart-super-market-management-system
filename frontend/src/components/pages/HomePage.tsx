@@ -328,6 +328,13 @@ export default function HomePage() {
                   placeholder="Search for products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      navigate("/products", {
+                        state: { search: searchQuery }
+                      });
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-full pr-12 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <button
