@@ -471,6 +471,24 @@ const apiService = {
     const data = await parseJsonSafe(res);
     return data as ApiResponse<CustomerOrder>;
   },
+  async getCustomerProfile(): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/profile`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async updateCustomerProfile(payload: any): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/profile`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
 };
 
 export { apiService };

@@ -62,6 +62,10 @@ const customerSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    profilePicture: {
+      type: String,
+      default: '',
+    },
     resetPasswordExpire: {
       type: Date,
       default: null,

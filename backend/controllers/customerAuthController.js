@@ -97,7 +97,8 @@ exports.register = async (req, res) => {
           email: customer.email,
           phone: customer.phone,
           tier: customer.tier,
-          loyaltyPoints: customer.loyaltyPoints
+          loyaltyPoints: customer.loyaltyPoints,
+          profilePicture: customer.profilePicture || ''
         }
       }
     });
@@ -161,7 +162,8 @@ exports.login = async (req, res) => {
           email: customer.email,
           phone: customer.phone,
           tier: customer.tier,
-          loyaltyPoints: customer.loyaltyPoints
+          loyaltyPoints: customer.loyaltyPoints,
+          profilePicture: customer.profilePicture || ''
         }
       }
     });
@@ -260,6 +262,7 @@ exports.googleLogin = async (req, res) => {
           phone: customer.phone,
           tier: customer.tier,
           loyaltyPoints: customer.loyaltyPoints,
+          profilePicture: customer.profilePicture || ''
         },
       },
     });
@@ -297,12 +300,12 @@ exports.getProfile = async (req, res) => {
 // @access  Private (customer)
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, phone, address, nicNumber } = req.body;
+    const { name, phone, address, nicNumber, profilePicture } = req.body;
     
     // Find customer and update
     const customer = await Customer.findByIdAndUpdate(
       req.user._id,
-      { name, phone, address, nicNumber },
+      { name, phone, address, nicNumber, profilePicture },
       { new: true, runValidators: true }
     );
 

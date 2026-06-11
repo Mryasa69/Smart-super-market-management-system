@@ -17,6 +17,7 @@ export default function Profile() {
     phone: "",
     address: "",
     nicNumber: "",
+    profilePicture: "",
   });
 
   useEffect(() => {
@@ -31,15 +32,18 @@ export default function Profile() {
     let baseName = "";
     let baseEmail = "";
     let basePhone = "";
+    let basePic = "";
 
     if (employeeObj) {
       baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
       baseEmail = employeeObj.email || "";
       basePhone = employeeObj.phone || "";
+      basePic = employeeObj.profilePicture || "";
     } else if (customerObj) {
       baseName = customerObj.name || "";
       baseEmail = customerObj.email || "";
       basePhone = customerObj.phone || "";
+      basePic = customerObj.profilePicture || "";
     }
 
     const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
@@ -52,6 +56,7 @@ export default function Profile() {
       phone: profileObj.phone || basePhone || "",
       address: profileObj.address || "",
       nicNumber: profileObj.nicNumber || "",
+      profilePicture: profileObj.profilePicture || basePic || "",
     });
   }, []);
 
@@ -138,8 +143,12 @@ export default function Profile() {
 
       <Card className="bg-green-600 text-white p-6 rounded-2xl mb-6">
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center">
-            <User className="w-8 h-8" />
+          <div className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-green-500">
+            {userData.profilePicture ? (
+              <img src={userData.profilePicture} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-8 h-8" />
+            )}
           </div>
           <div>
             <h2 className="text-xl">{userData.name}</h2>
