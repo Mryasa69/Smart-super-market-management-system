@@ -27,8 +27,8 @@ const getDefaultImage = (name: string, category: string) => {
   //if (lowerName.includes('chocolate')) return 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=400&h=400&fit=crop';
   //if (lowerName.includes('rice')) return 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop';
   //if (lowerName.includes('salmon') || lowerName.includes('fish')) return 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=400&h=400&fit=crop';
-  
-  
+
+
   // if (lowerName.includes('cheese')) return 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=400&h=400&fit=crop';
   // if (lowerName.includes('cereal')) return 'https://images.unsplash.com/photo-1621588335788-5a2cfc610c0e?w=400&h=400&fit=crop';
   // if (lowerName.includes('oil')) return 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&h=400&fit=crop';
@@ -340,9 +340,9 @@ export default function HomePage() {
 
 
             <div className="flex items-center gap-6 ">
-              
+
               <div className="relative cursor-pointer" ref={accountMenuRef}>
-                
+
                 <button
                   onClick={() => setIsAccountMenuOpen((prev) => !prev)}
                   className="flex flex-col items-center gap-1 hover:text-green-700"
@@ -455,7 +455,7 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <ul className="flex items-center gap-8 py-3">
               <li><a href="#" className="hover:text-green-200">Home</a></li>
-              <li><a href="#categories" className="hover:text-green-200">Shop by Category</a></li>
+              <li><a href="/products" className="hover:text-green-200">Shop by Category</a></li>
               <li><a href="#offers" className="hover:text-green-200">Special Offers</a></li>
               <li><a href="#weekly-deals" className="hover:text-green-200">Weekly Deals</a></li>
               <li><a href="/contact" className="hover:text-green-200">Contact Us</a></li>
@@ -471,7 +471,13 @@ export default function HomePage() {
             <div>
               <h2 className="text-green-700 mb-4">Fresh Groceries Delivered to Your Doorstep</h2>
               <p className="text-gray-600 mb-6">Shop from our wide range of fresh fruits, vegetables, dairy products, and more. Quality guaranteed!</p>
-              <button className="bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800">
+              <button onClick={() => {
+                navigate('/products');
+                setIsAccountMenuOpen(false);
+
+
+              }}
+                className="bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800">
                 Shop Now
               </button>
             </div>
@@ -486,7 +492,7 @@ export default function HomePage() {
         </div>
       </section>
 
-       {/* Shop by Category */}
+      {/* Shop by Category */}
       <section id="categories" className="py-16 bg-white">
         <div className="container mx-auto px-4">
           <h2 className="text-gray-800 mb-8 text-center">Shop by Category</h2>
@@ -496,13 +502,13 @@ export default function HomePage() {
                 key={index}
                 className="group cursor-pointer"
                 onClick={() =>
-                navigate("/products", {
-                  state: { category: category.name }
-                })
-              }
+                  navigate("/products", {
+                    state: { category: category.name }
+                  })
+                }
               >
                 <div className="relative overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow">
-                  <img 
+                  <img
                     src={category.image}
                     alt={category.name}
                     className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
@@ -682,7 +688,7 @@ export default function HomePage() {
         </div>
       </section>
 
-       {/* Footer */}
+      {/* Footer */}
       <footer className="bg-gray-800 text-white py-12">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
