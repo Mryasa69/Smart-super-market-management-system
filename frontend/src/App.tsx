@@ -37,18 +37,18 @@ function App() {
 
 
   useEffect(() => {
-    const token = apiService.getStoredToken();
-    const user = apiService.getStoredUser();
-    
-    if (token && user) {
-      setUserRole(user.role);
-    } else {
-      const customerToken = localStorage.getItem('customerToken');
-      const customer = localStorage.getItem('customer');
-      if (customerToken && customer) {
-        setUserRole('customer');
-      }
+    if (apiService.isCustomerAuthenticated()) {
+      setUserRole('customer');
+      setIsLoading(false);
+      return;
     }
+
+    const staffToken = localStorage.getItem('token');
+    const user = apiService.getStoredUser();
+    if (staffToken && user?.role) {
+      setUserRole(user.role);
+    }
+
     setIsLoading(false);
   }, []);
 
@@ -78,13 +78,17 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<LoginPage onLogin={handleLogin} />} />
         <Route path="/signup" element={<SignUpPage onLogin={handleLogin} />} />
-        <Route path="/customer-register" element={<CustomerRegister />} />
+        <Route path="/customer-register" element={<CustomerRegister onLogin={handleLogin} />} />
         <Route path="/customer-dashboard" element={
-          userRole === 'customer' ? <CustomerDashboard /> : <Navigate to="/login" />
+          apiService.isCustomerAuthenticated() ? <CustomerDashboard /> : <Navigate to="/login" />
         } />
         <Route path="/cart" element={<ShoppingCart />} />
-        <Route path="/profile" element={userRole ? <Profile /> : <Navigate to="/login" />} />
-        <Route path="/profile/edit" element={userRole ? <ProfileEdit /> : <Navigate to="/login" />} />
+        <Route path="/profile" element={
+          userRole || apiService.isCustomerAuthenticated() ? <Profile /> : <Navigate to="/login" />
+        } />
+        <Route path="/profile/edit" element={
+          userRole || apiService.isCustomerAuthenticated() ? <ProfileEdit /> : <Navigate to="/login" />
+        } />
         <Route path="/orders/:orderId" element={<OrderDetails />} />
         <Route path="/orders" element={<OrderHistory />} />
         <Route path="/order-success" element={<OrderSuccess />} />

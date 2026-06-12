@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Search, ShoppingCart, User,Heart,ArrowLeft,SlidersHorizontal,} from "lucide-react";
 import { useNavigate,useLocation } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import { actionButtonClass } from '../../lib/actionButton';
 
 export default function Products() {
   const [wishlist, setWishlist] = useState<number[]>([]);
@@ -191,7 +192,7 @@ const sortedProducts = [...filteredProducts].sort((a, b) => {
             {/* Back */}
             <Link
               to="/"
-              className="flex items-center gap-2 text-green-700"
+              className={`inline-flex items-center gap-2 ${actionButtonClass}`}
             >
               <ArrowLeft className="w-5 h-5" />
               Back to Home

@@ -10,33 +10,54 @@ interface PurchaseOrderManagementProps {
 
 export default function PurchaseOrderManagement({ userRole, onLogout }: PurchaseOrderManagementProps) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  
   const [formData, setFormData] = useState({
     supplierId: '',
     orderDate: '',
     expectedDelivery: '',
     status: 'pending' as 'pending' | 'confirmed' | 'delivered' | 'cancelled',
-    items: [] as Array<{productId: string, name: string, quantity: number, price: number}>
+    items: [] as Array<{ productId: string; name: string; quantity: number; price: number }>
   });
+
+  const [newItem, setNewItem] = useState({
+    productId: '',
+    name: '',
+    quantity: 1,
+    price: 0
+  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    loadPurchaseOrders();
+    loadPOData();
   }, []);
 
-  const loadPurchaseOrders = async () => {
+  const loadPOData = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getPurchaseOrders();
-      if (response.success && response.data) {
-        setPurchaseOrders(response.data);
+      const [poRes, supRes, prodRes] = await Promise.all([
+        apiService.getPurchaseOrders(),
+        apiService.getSuppliers(),
+        apiService.getProducts()
+      ]);
+      if (poRes.success && poRes.data) {
+        setPurchaseOrders(poRes.data);
+      }
+      if (supRes.success && supRes.data) {
+        setSuppliers(supRes.data);
+      }
+      if (prodRes.success && prodRes.data) {
+        setProducts(prodRes.data);
       }
     } catch (error) {
-      console.error('Error loading purchase orders:', error);
+      console.error('Error loading purchase order data:', error);
     } finally {
       setLoading(false);
     }
@@ -44,13 +65,21 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
 
   const handleSaveOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.items.length === 0) {
+      alert('Please add at least one item to the purchase order!');
+      return;
+    }
     setIsSubmitting(true);
     
     try {
       const orderData = {
-        ...formData,
+        supplierId: formData.supplierId,
+        orderDate: formData.orderDate,
+        expectedDelivery: formData.expectedDelivery,
+        status: formData.status,
         totalAmount: formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0),
-        itemCount: formData.items.length
+        items: formData.items.reduce((sum, item) => sum + item.quantity, 0),
+        notes: `PO containing ${formData.items.length} different product lines.`
       };
       
       let response;
@@ -80,7 +109,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
           status: 'pending',
           items: []
         });
-        loadPurchaseOrders();
+        loadPOData();
       }
     } catch (error) {
       alert('Error saving purchase order');
@@ -97,14 +126,55 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     }));
   };
 
+  const handleProductSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const prodId = e.target.value;
+    const selectedProd = products.find(p => p._id === prodId);
+    if (selectedProd) {
+      setNewItem({
+        productId: prodId,
+        name: selectedProd.name,
+        quantity: 1,
+        price: selectedProd.price
+      });
+    } else {
+      setNewItem({
+        productId: '',
+        name: '',
+        quantity: 1,
+        price: 0
+      });
+    }
+  };
+
+  const handleAddItemToPO = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!newItem.productId) {
+      alert('Please select a product first!');
+      return;
+    }
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { ...newItem }]
+    }));
+    // Reset selection input fields
+    setNewItem({
+      productId: '',
+      name: '',
+      quantity: 1,
+      price: 0
+    });
+  };
+
   const handleEditOrder = (order: PurchaseOrder) => {
     setEditingOrder(order);
+    const dateFormatted = order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : '';
+    const deliveryFormatted = order.expectedDelivery ? new Date(order.expectedDelivery).toISOString().split('T')[0] : '';
     setFormData({
-      supplierId: order.supplierId,
-      orderDate: order.orderDate,
-      expectedDelivery: order.expectedDelivery,
-      status: order.status,
-      items: order.items || []
+      supplierId: order.supplierId?._id || order.supplierId || '',
+      orderDate: dateFormatted,
+      expectedDelivery: deliveryFormatted,
+      status: order.status as any,
+      items: [] // In this high-level schema, items count is saved as a number, so we start with empty array on edits
     });
     setShowAddModal(true);
   };
@@ -119,22 +189,12 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
       status: 'pending',
       items: []
     });
-  };
-
-  const addItemToOrder = () => {
-    setFormData(prev => ({
-      ...prev,
-      items: [...prev.items, { productId: '', name: '', quantity: 1, price: 0 }]
-    }));
-  };
-
-  const updateItemInOrder = (index: number, field: string, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      )
-    }));
+    setNewItem({
+      productId: '',
+      name: '',
+      quantity: 1,
+      price: 0
+    });
   };
 
   const removeItemFromOrder = (index: number) => {
@@ -145,7 +205,10 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
   };
 
   const filteredOrders = purchaseOrders.filter((order) => {
-    const matchesSearch = order._id.toLowerCase().includes(searchQuery.toLowerCase());
+    const orderIdString = order._id.toLowerCase();
+    const supplierName = order.supplierId?.name?.toLowerCase() || '';
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = orderIdString.includes(query) || supplierName.includes(query);
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
@@ -250,10 +313,10 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder="Search orders by ID or supplier name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-full"
               />
             </div>
             <select
@@ -277,9 +340,10 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-gray-700">Order ID</th>
+                  <th className="px-6 py-3 text-left text-gray-700">Supplier</th>
                   <th className="px-6 py-3 text-left text-gray-700">Order Date</th>
                   <th className="px-6 py-3 text-left text-gray-700">Expected Delivery</th>
-                  <th className="px-6 py-3 text-left text-gray-700">Items</th>
+                  <th className="px-6 py-3 text-left text-gray-700">Items Count</th>
                   <th className="px-6 py-3 text-left text-gray-700">Total Amount</th>
                   <th className="px-6 py-3 text-left text-gray-700">Status</th>
                   <th className="px-6 py-3 text-left text-gray-700">Actions</th>
@@ -291,8 +355,11 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <ShoppingCart className="w-5 h-5 text-gray-400" />
-                        <span className="text-gray-900 font-medium">#{order._id.slice(-8)}</span>
+                        <span className="text-gray-900 font-medium">#{order._id.slice(-8).toUpperCase()}</span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-800 font-semibold">
+                      {order.supplierId?.name || 'Unknown'}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-gray-600">
@@ -303,20 +370,17 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                     <td className="px-6 py-4 text-gray-600">
                       {new Date(order.expectedDelivery).toLocaleDateString()}
                     </td>
+                    <td className="px-6 py-4 text-gray-600">
+                      {order.items}
+                    </td>
                     <td className="px-6 py-4">
-                      <div className="text-center">
-                        <p className="text-gray-900 font-medium">{order.itemCount}</p>
-                        <p className="text-gray-500 text-sm">items</p>
+                      <div className="flex items-center gap-1 text-gray-900 font-semibold">
+                        <span>Rs. </span>
+                        <span>{order.totalAmount.toLocaleString()}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-gray-900">
-                        <DollarSign className="w-4 h-4" />
-                        <span className="font-medium">{order.totalAmount.toLocaleString()}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${getStatusColor(order.status)}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 w-fit ${getStatusColor(order.status)}`}>
                         {getStatusIcon(order.status)}
                         {order.status.toUpperCase()}
                       </span>
@@ -353,91 +417,143 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
               </h2>
               <form onSubmit={handleSaveOrder} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select 
-                  name="supplierId"
-                  value={formData.supplierId}
-                  onChange={handleInputChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                >
-                  <option value="">Select Supplier</option>
-                  <option value="supplier1">Dairy Farm Ltd</option>
-                  <option value="supplier2">Golden Bakery</option>
-                  <option value="supplier3">Fresh Farms</option>
-                </select>
-                <input
-                  type="date"
-                  name="orderDate"
-                  value={formData.orderDate}
-                  onChange={handleInputChange}
-                  placeholder="Order Date"
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-                <input
-                  type="date"
-                  name="expectedDelivery"
-                  value={formData.expectedDelivery}
-                  onChange={handleInputChange}
-                  placeholder="Expected Delivery"
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  required
-                />
-                <select 
-                  name="status"
-                  value={formData.status}
-                  onChange={handleInputChange}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-              
-              {/* Items Section */}
-              <div className="mt-6">
-                <h3 className="text-gray-800 mb-4">Order Items</h3>
-                <div className="space-y-2">
-                  <div className="grid grid-cols-4 gap-2">
-                    <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                      <option value="">Select Product</option>
-                      <option value="product1">Fresh Milk 1L</option>
-                      <option value="product2">White Bread</option>
-                      <option value="product3">Tomatoes 1kg</option>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-gray-500 mb-1">Supplier</label>
+                    <select 
+                      name="supplierId"
+                      value={formData.supplierId}
+                      onChange={handleInputChange}
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
+                    >
+                      <option value="">Select Supplier</option>
+                      {suppliers.map((sup) => (
+                        <option key={sup._id} value={sup._id}>{sup.name}</option>
+                      ))}
                     </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-gray-500 mb-1">Status</label>
+                    <select 
+                      name="status"
+                      value={formData.status}
+                      onChange={handleInputChange}
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                    >
+                      <option value="pending">PENDING</option>
+                      <option value="confirmed">CONFIRMED</option>
+                      <option value="delivered">DELIVERED</option>
+                      <option value="cancelled">CANCELLED</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-gray-500 mb-1">Order Date</label>
                     <input
-                      type="number"
-                      placeholder="Quantity"
+                      type="date"
+                      name="orderDate"
+                      value={formData.orderDate}
+                      onChange={handleInputChange}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
                     />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className="text-xs font-semibold text-gray-500 mb-1">Expected Delivery Date</label>
                     <input
-                      type="number"
-                      placeholder="Price"
+                      type="date"
+                      name="expectedDelivery"
+                      value={formData.expectedDelivery}
+                      onChange={handleInputChange}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      required
                     />
-                    <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  </div>
+                </div>
+              
+                {/* Items Section */}
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="text-gray-800 mb-2 font-bold text-sm">Add Products to Order</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                    <div className="flex flex-col md:col-span-2">
+                      <label className="text-xs text-gray-500 mb-1">Product</label>
+                      <select 
+                        value={newItem.productId}
+                        onChange={handleProductSelectChange}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      >
+                        <option value="">Select Product</option>
+                        {products.map((p) => (
+                          <option key={p._id} value={p._id}>{p.name} (Rs. {p.price})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">Quantity</label>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Quantity"
+                        value={newItem.quantity}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, quantity: Math.max(1, Number(e.target.value)) }))}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      />
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={handleAddItemToPO}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold transition-colors h-[38px]"
+                    >
                       Add Item
                     </button>
                   </div>
-                </div>
-              </div>
 
-                <div className="flex justify-end gap-2 mt-6">
+                  {/* List of currently added items */}
+                  <div className="mt-4 space-y-2 max-h-40 overflow-y-auto">
+                    {formData.items.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border text-sm">
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-800">{item.name}</p>
+                          <p className="text-xs text-gray-500">Qty: {item.quantity} × Rs. {item.price}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-bold text-gray-700">Rs. {(item.quantity * item.price).toLocaleString()}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeItemFromOrder(index)}
+                            className="text-red-500 hover:text-red-700 font-semibold"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {formData.items.length === 0 && (
+                      <p className="text-gray-400 text-xs text-center italic py-4">No items added to this order yet.</p>
+                    )}
+                  </div>
+
+                  {formData.items.length > 0 && (
+                    <div className="flex justify-between font-bold text-gray-800 text-sm border-t pt-3 mt-3">
+                      <span>Estimated Order Value:</span>
+                      <span className="text-green-700 text-base">Rs. {formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 mt-6 border-t pt-4">
                   <button
                     type="button"
                     onClick={handleModalClose}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50"
+                    className="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 font-medium"
                   >
-                    {isSubmitting ? (editingOrder ? 'Updating...' : 'Creating...') : (editingOrder ? 'Update Order' : 'Create Order')}
+                    {isSubmitting ? 'Saving...' : (editingOrder ? 'Update Order' : 'Create Order')}
                   </button>
                 </div>
               </form>
@@ -448,3 +564,4 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     </DashboardLayout>
   );
 }
+

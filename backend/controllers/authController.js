@@ -230,51 +230,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// @desc    Register a new customer
-// @route   POST /api/auth/register-customer
-// @access  Public
-exports.registerCustomer = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ success: false, errors: errors.array() });
-    }
-
-    const { firstName, lastName, email, password, phone } = req.body;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'User already exists with this email' });
-    }
-
-    // Create customer user
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password,
-      phone: phone || '',
-      role: 'customer',
-    });
-
-    const token = generateToken(user._id);
-
-    res.status(201).json({
-      success: true,
-      data: {
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        token,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
 
 // @desc    Get current logged-in user
 // @route   GET /api/auth/me

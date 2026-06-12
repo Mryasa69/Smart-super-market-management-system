@@ -260,11 +260,12 @@ const updateQuantity = (id: string | number, change: number) => {
            {cartItems.map((item: CartItem) => (
                 <Card key={item.id} className="p-4">
                   <div className="flex gap-4">
-                    <ImageWithFallback
-                      src={item.image}
-                      alt={item.name}
-                      className="w-24 h-24 object-cover rounded"
-                    />
+                    <div className="cart-item-thumb">
+                      <ImageWithFallback
+                        src={item.image}
+                        alt={item.name}
+                      />
+                    </div>
 
                   <div className="flex-1">
                     <h3 className="font-medium mb-1">{item.name}</h3>

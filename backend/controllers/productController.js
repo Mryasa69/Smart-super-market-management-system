@@ -90,7 +90,7 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { name, category, sku, quantity, price, minStock, supplier, barcode, specialOffers, weeklyDeals } = req.body;
+    const { name, category, sku, quantity, price, minStock, supplier, barcode, specialOffers, weeklyDeals, image } = req.body;
 
     // Check if SKU already exists
     const existing = await Product.findOne({ sku: sku.toUpperCase() });
@@ -109,6 +109,7 @@ exports.createProduct = async (req, res) => {
       barcode: barcode || sku,
       specialOffers: specialOffers || false,
       weeklyDeals: weeklyDeals || false,
+      image: image || '',
     };
 
     // Add weeklyDealsAddedAt timestamp if weeklyDeals is true
@@ -144,7 +145,7 @@ exports.updateProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    const { name, category, sku, quantity, price, minStock, supplier, barcode, specialOffers, weeklyDeals } = req.body;
+    const { name, category, sku, quantity, price, minStock, supplier, barcode, specialOffers, weeklyDeals, image } = req.body;
 
     product.name = name || product.name;
     product.category = category || product.category;
@@ -155,7 +156,8 @@ exports.updateProduct = async (req, res) => {
     product.supplier = supplier !== undefined ? supplier : product.supplier;
     product.barcode = barcode !== undefined ? barcode : product.barcode;
     product.specialOffers = specialOffers !== undefined ? specialOffers : product.specialOffers;
-    
+    product.image = image !== undefined ? image : product.image;
+
     // Handle weeklyDeals and timestamp
     if (weeklyDeals !== undefined) {
       product.weeklyDeals = weeklyDeals;

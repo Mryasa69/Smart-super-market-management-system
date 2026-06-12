@@ -1,75 +1,109 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
-import Sidebar from "../Layout/Sidebar"; // adjust the path
 import { Search, Plus, Minus, Trash2, CreditCard, Banknote, QrCode, Printer, X } from 'lucide-react';
+import { apiService } from '../../services/api';
 
 interface POSSystemProps {
   userRole: 'admin' | 'cashier' | 'stock_manager' | null;
   onLogout: () => void;
 }
 
-interface Product {
-  id: number;
+interface CartItem {
+  productId: string;
   name: string;
   price: number;
-  barcode: string;
-  category: string;
-}
-
-interface CartItem extends Product {
+  barcode?: string;
   quantity: number;
   subtotal: number;
 }
 
-const availableProducts: Product[] = [
-  { id: 1, name: 'Fresh Milk 1L', price: 280, barcode: 'MILK001', category: 'Dairy' },
-  { id: 2, name: 'White Bread', price: 120, barcode: 'BREAD001', category: 'Bakery' },
-  { id: 3, name: 'Tomatoes 1kg', price: 350, barcode: 'VEG001', category: 'Vegetables' },
-  { id: 4, name: 'Chicken 1kg', price: 850, barcode: 'MEAT001', category: 'Meat' },
-  { id: 5, name: 'Rice 5kg', price: 600, barcode: 'RICE001', category: 'Grains' },
-  { id: 6, name: 'Orange Juice 1L', price: 320, barcode: 'BEV001', category: 'Beverages' },
-  { id: 7, name: 'Chocolate Bar', price: 180, barcode: 'SNACK001', category: 'Snacks' },
-  { id: 8, name: 'Eggs (Dozen)', price: 450, barcode: 'EGG001', category: 'Dairy' },
-  { id: 9, name: 'Fresh Apples 1kg', price: 450, barcode: 'FRUIT001', category: 'Fruits' },
-  { id: 10, name: 'Butter 500g', price: 680, barcode: 'DAIRY002', category: 'Dairy' },
-];
-
 export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
+  const [products, setProducts] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'qr'>('cash');
+  const [loading, setLoading] = useState(true);
 
-  const filteredProducts = availableProducts.filter((product) =>
+  useEffect(() => {
+    loadPOSData();
+  }, []);
+
+  const loadPOSData = async () => {
+    try {
+      setLoading(true);
+      const [prodRes, custRes] = await Promise.all([
+        apiService.getProducts(),
+        apiService.getCustomers(),
+      ]);
+
+      if (prodRes.success && prodRes.data) {
+        setProducts(prodRes.data);
+      }
+      if (custRes.success && custRes.data) {
+        setCustomers(custRes.data);
+      }
+    } catch (error) {
+      console.error('Error loading POS data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.barcode.toLowerCase().includes(searchQuery.toLowerCase())
+    (product.barcode && product.barcode.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    product.sku.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const addToCart = (product: Product) => {
-    const existingItem = cart.find((item) => item.id === product.id);
+  const addToCart = (product: any) => {
+    const existingItem = cart.find((item) => item.productId === product._id);
     
     if (existingItem) {
+      if (existingItem.quantity >= product.quantity) {
+        alert('Cannot add more items than available in stock!');
+        return;
+      }
       setCart(
         cart.map((item) =>
-          item.id === product.id
+          item.productId === product._id
             ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price }
             : item
         )
       );
     } else {
-      setCart([...cart, { ...product, quantity: 1, subtotal: product.price }]);
+      if (product.quantity <= 0) {
+        alert('Product is out of stock!');
+        return;
+      }
+      setCart([...cart, { 
+        productId: product._id, 
+        name: product.name, 
+        price: product.price, 
+        barcode: product.barcode || product.sku,
+        quantity: 1, 
+        subtotal: product.price 
+      }]);
     }
   };
 
-  const updateQuantity = (id: number, delta: number) => {
+  const updateQuantity = (productId: string, delta: number) => {
+    const product = products.find((p) => p._id === productId);
     setCart(
       cart
         .map((item) => {
-          if (item.id === id) {
-            const newQuantity = Math.max(0, item.quantity + delta);
-            return { ...item, quantity: newQuantity, subtotal: newQuantity * item.price };
+          if (item.productId === productId) {
+            const newQuantity = item.quantity + delta;
+            if (product && newQuantity > product.quantity) {
+              alert('Cannot exceed available stock limit!');
+              return item;
+            }
+            const validatedQuantity = Math.max(0, newQuantity);
+            return { ...item, quantity: validatedQuantity, subtotal: validatedQuantity * item.price };
           }
           return item;
         })
@@ -77,13 +111,13 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
     );
   };
 
-  const removeFromCart = (id: number) => {
-    setCart(cart.filter((item) => item.id !== id));
+  const removeFromCart = (productId: string) => {
+    setCart(cart.filter((item) => item.productId !== productId));
   };
 
   const handleBarcodeScan = (e: React.FormEvent) => {
     e.preventDefault();
-    const product = availableProducts.find((p) => p.barcode === barcodeInput);
+    const product = products.find((p) => p.barcode === barcodeInput || p.sku === barcodeInput);
     if (product) {
       addToCart(product);
       setBarcodeInput('');
@@ -104,16 +138,52 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
     setShowPaymentModal(true);
   };
 
-  const completeSale = () => {
-    alert(`Sale completed! Total: Rs. ${total.toFixed(2)}\nPayment method: ${paymentMethod.toUpperCase()}`);
-    setCart([]);
-    setDiscountPercent(0);
-    setShowPaymentModal(false);
+  const completeSale = async () => {
+    const salePayload = {
+      items: cart.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        subtotal: item.subtotal
+      })),
+      subtotal,
+      discountPercent,
+      discountAmount,
+      total,
+      paymentMethod,
+      customerId: selectedCustomerId || null
+    };
+
+    try {
+      const response = await apiService.createSale(salePayload);
+      if (response.success) {
+        alert(`Sale completed successfully!\nTotal: Rs. ${total.toFixed(2)}\nPayment method: ${paymentMethod.toUpperCase()}`);
+        setCart([]);
+        setDiscountPercent(0);
+        setSelectedCustomerId('');
+        setShowPaymentModal(false);
+        await loadPOSData(); // Reload inventory levels
+      } else {
+        alert('Failed to save sale: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error completing sale:', error);
+      alert('Network error completing sale transaction.');
+    }
   };
 
-  return (
+  if (loading) {
+    return (
+      <DashboardLayout userRole={userRole} onLogout={onLogout}>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-gray-600">Loading POS system data...</div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-    
+  return (
     <DashboardLayout userRole={userRole} onLogout={onLogout}>
       <div className="space-y-6">
         {/* Header */}
@@ -155,7 +225,7 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products..."
+                  placeholder="Search products by name, barcode, SKU..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -163,13 +233,21 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-96 overflow-y-auto">
                 {filteredProducts.map((product) => (
                   <button
-                    key={product.id}
+                    key={product._id}
                     onClick={() => addToCart(product)}
-                    className="p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left"
+                    className="p-4 border border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left flex flex-col justify-between"
+                    disabled={product.quantity <= 0}
                   >
-                    <p className="text-gray-800 mb-1">{product.name}</p>
-                    <p className="text-green-700">Rs. {product.price}</p>
-                    <p className="text-xs text-gray-500 mt-1">{product.barcode}</p>
+                    <div>
+                      <p className="text-gray-800 mb-1 font-semibold">{product.name}</p>
+                      <p className="text-green-700 font-medium">Rs. {product.price}</p>
+                    </div>
+                    <div className="flex justify-between items-center mt-2 text-xs text-gray-500 w-full">
+                      <span>{product.barcode || product.sku}</span>
+                      <span className={product.quantity <= 5 ? "text-red-600 font-bold" : "text-gray-600"}>
+                        Qty: {product.quantity}
+                      </span>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -196,14 +274,14 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                   <p className="text-gray-500 text-center py-8">Cart is empty</p>
                 ) : (
                   cart.map((item) => (
-                    <div key={item.id} className="border-b pb-3">
+                    <div key={item.productId} className="border-b pb-3">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <p className="text-gray-800">{item.name}</p>
                           <p className="text-sm text-gray-500">Rs. {item.price} each</p>
                         </div>
                         <button
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.productId)}
                           className="text-red-600 hover:text-red-700"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -212,14 +290,14 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => updateQuantity(item.id, -1)}
+                            onClick={() => updateQuantity(item.productId, -1)}
                             className="p-1 border border-gray-300 rounded hover:bg-gray-100"
                           >
                             <Minus className="w-4 h-4" />
                           </button>
                           <span className="w-8 text-center">{item.quantity}</span>
                           <button
-                            onClick={() => updateQuantity(item.id, 1)}
+                            onClick={() => updateQuantity(item.productId, 1)}
                             className="p-1 border border-gray-300 rounded hover:bg-gray-100"
                           >
                             <Plus className="w-4 h-4" />
@@ -232,10 +310,26 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                 )}
               </div>
 
-              {/* Discount */}
+              {/* Customer Link & Discount */}
               <div className="border-t pt-4 space-y-3">
                 <div>
-                  <label className="block text-gray-700 mb-2">Discount (%)</label>
+                  <label className="block text-gray-700 mb-1 text-sm font-medium">Link Customer (Loyalty Points)</label>
+                  <select
+                    value={selectedCustomerId}
+                    onChange={(e) => setSelectedCustomerId(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                  >
+                    <option value="">Walk-in Customer (No points)</option>
+                    {customers.map((cust) => (
+                      <option key={cust._id} value={cust._id}>
+                        {cust.name} - {cust.phone} ({cust.tier})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 mb-1 text-sm font-medium">Discount (%)</label>
                   <input
                     type="number"
                     value={discountPercent}
@@ -247,7 +341,7 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                 </div>
 
                 {/* Summary */}
-                <div className="space-y-2">
+                <div className="space-y-2 pt-2">
                   <div className="flex justify-between text-gray-600">
                     <span>Subtotal:</span>
                     <span>Rs. {subtotal.toFixed(2)}</span>
@@ -258,7 +352,7 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                       <span>- Rs. {discountAmount.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-gray-800 border-t pt-2">
+                  <div className="flex justify-between text-gray-800 border-t pt-2 font-bold">
                     <span>Total:</span>
                     <span>Rs. {total.toFixed(2)}</span>
                   </div>
@@ -292,12 +386,12 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
               </div>
 
               <div className="mb-6">
-                <p className="text-gray-600 mb-2">Total Amount:</p>
-                <p className="text-gray-800">Rs. {total.toFixed(2)}</p>
+                <p className="text-gray-600 mb-2 font-semibold">Total Amount:</p>
+                <p className="text-2xl font-bold text-green-700">Rs. {total.toFixed(2)}</p>
               </div>
 
               <div className="space-y-3 mb-6">
-                <p className="text-gray-700">Select Payment Method:</p>
+                <p className="text-gray-700 font-medium">Select Payment Method:</p>
                 
                 <button
                   onClick={() => setPaymentMethod('cash')}
@@ -305,9 +399,9 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                     paymentMethod === 'cash' ? 'border-green-700 bg-green-50' : 'border-gray-300'
                   }`}
                 >
-                  <Banknote className="w-6 h-6" />
+                  <Banknote className="w-6 h-6 text-green-600" />
                   <div className="text-left">
-                    <p className="text-gray-800">Cash</p>
+                    <p className="text-gray-800 font-semibold">Cash</p>
                     <p className="text-sm text-gray-500">Pay with cash</p>
                   </div>
                 </button>
@@ -318,9 +412,9 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                     paymentMethod === 'card' ? 'border-green-700 bg-green-50' : 'border-gray-300'
                   }`}
                 >
-                  <CreditCard className="w-6 h-6" />
+                  <CreditCard className="w-6 h-6 text-blue-600" />
                   <div className="text-left">
-                    <p className="text-gray-800">Card</p>
+                    <p className="text-gray-800 font-semibold">Card</p>
                     <p className="text-sm text-gray-500">Credit/Debit card</p>
                   </div>
                 </button>
@@ -331,9 +425,9 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
                     paymentMethod === 'qr' ? 'border-green-700 bg-green-50' : 'border-gray-300'
                   }`}
                 >
-                  <QrCode className="w-6 h-6" />
+                  <QrCode className="w-6 h-6 text-purple-600" />
                   <div className="text-left">
-                    <p className="text-gray-800">QR Payment</p>
+                    <p className="text-gray-800 font-semibold">QR Payment</p>
                     <p className="text-sm text-gray-500">Mobile wallet / UPI</p>
                   </div>
                 </button>
@@ -342,13 +436,13 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={completeSale}
-                  className="flex-1 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 flex items-center justify-center gap-2 font-medium"
                 >
                   <Printer className="w-4 h-4" />
                   Complete & Print
@@ -361,3 +455,4 @@ export default function POSSystem({ userRole, onLogout }: POSSystemProps) {
     </DashboardLayout>
   );
 }
+

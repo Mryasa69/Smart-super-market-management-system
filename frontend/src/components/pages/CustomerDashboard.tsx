@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Package, TrendingUp, LogOut, Settings, Gift } from 'lucide-react';
+import { apiService } from '../../services/api';
 
 interface Customer {
   id: string;
@@ -18,13 +19,21 @@ export default function CustomerDashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const customerData = localStorage.getItem('customer');
-    const token = localStorage.getItem('customerToken');
-    
-    if (customerData && token) {
-      setCustomer(JSON.parse(customerData));
+    const parsed = apiService.getStoredCustomer();
+    const token = apiService.getStoredToken();
+
+    if (parsed && token) {
+      setCustomer({
+        id: parsed.id || parsed._id || '',
+        name: parsed.name || 'Customer',
+        email: parsed.email || '',
+        phone: parsed.phone || '',
+        tier: parsed.tier || 'Bronze',
+        loyaltyPoints: parsed.loyaltyPoints ?? 0,
+        totalPurchases: parsed.totalPurchases ?? 0,
+      });
     } else {
-      navigate('/customer-login');
+      navigate('/login');
     }
     setLoading(false);
   }, [navigate]);

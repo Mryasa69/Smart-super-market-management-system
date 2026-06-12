@@ -196,7 +196,9 @@ exports.register = async (req, res) => {
       name,
       email,
       phone,
-      password,
+      password, // Will be hashed by pre-save hook
+      nicNumber: req.body.nicNumber || '',
+      address: req.body.address || '',
       isVerified: true, // Verified during the OTP step!
     });
 

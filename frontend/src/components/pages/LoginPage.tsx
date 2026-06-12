@@ -40,11 +40,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         const role = staffResponse.data.role;
         onLogin(role);
 
-        if (role === 'admin') navigate('/dashboard');
-        else if (role === 'cashier') navigate('/pos');
-        else if (role === 'stock_manager') navigate('/inventory');
-        else if (role === 'customer') navigate('/customer-dashboard');
-        else navigate('/');
+        navigate('/');
       } else {
         const customerResponse = await apiService.customerLogin(formData);
 
@@ -61,7 +57,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           }
 
           onLogin('customer');
-          navigate('/customer-dashboard');
+          navigate('/');
         } else {
           setError(customerResponse.message || 'Invalid email or password');
         }

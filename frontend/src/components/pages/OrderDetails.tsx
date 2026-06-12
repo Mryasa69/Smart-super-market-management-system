@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Package, CheckCircle, Clock } from "lucide-react";
 import { Card } from "../ui/card";
 import { apiService, CustomerOrder } from "../../services/api";
+import { actionButtonClass } from "../../lib/actionButton";
 
 export function OrderDetails() {
   const { orderId } = useParams();
@@ -71,7 +72,7 @@ export function OrderDetails() {
       <div className="flex items-center justify-between mb-6 border-b pb-4">
         <button
           onClick={() => navigate("/orders")}
-          className="flex items-center gap-2 text-black-600 hover:text-gray-600"
+          className={`flex items-center gap-2 ${actionButtonClass}`}
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Home
@@ -80,14 +81,14 @@ export function OrderDetails() {
           <Package className="w-6 h-6" />
           <h1 >My Orders</h1>
         </div>
-        <Link to="/profile" className="text-black-300 hover:text-gray-600">
+        <Link to="/profile" className={actionButtonClass}>
           My Profile
         </Link>
       </div>
 
       <button
         onClick={() => navigate("/orders")}
-        className="flex items-center gap-2 text-green-600 hover:text-green-900 mb-6"
+        className={`flex items-center gap-2 mb-6 ${actionButtonClass}`}
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Orders

@@ -1,5 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { Link, useNavigate, Navigate } from "react-router-dom";
+import { User, Heart, Award } from "lucide-react";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { actionButtonClass } from "../../lib/actionButton";
 import Cropper from "react-easy-crop";
 import "react-easy-crop/react-easy-crop.css";
 import { apiService } from "../../services/api";
@@ -62,9 +69,21 @@ export default function ProfileEdit() {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const isAuthenticated = localStorage.getItem("user") || localStorage.getItem("customer");
+  // Using the safer authentication check from the sithum branch
+  const isAuthenticated =
+    apiService.isCustomerAuthenticated() || Boolean(localStorage.getItem("user"));
 
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", address: "", nicNumber: "", profilePicture: "" });
+  // Combined state keeping your form fields but adding the profilePicture and crop variables
+  const [formData, setFormData] = useState({ 
+    firstName: "", 
+    lastName: "", 
+    email: "", 
+    phone: "", 
+    address: "", 
+    nicNumber: "", 
+    profilePicture: "" 
+  });
+  
   const [preview, setPreview] = useState<string | null>(null);
   const [rawImg, setRawImg] = useState<string | null>(null);
   const [showCrop, setShowCrop] = useState(false);
@@ -75,44 +94,82 @@ export default function ProfileEdit() {
   const [saving, setSaving] = useState(false);
   const [avatarHover, setAvatarHover] = useState(false);
 
-  /* load data */
   useEffect(() => {
-    const empRaw  = localStorage.getItem("user");
-    const custRaw = localStorage.getItem("customer");
-    const profRaw = localStorage.getItem("customerProfile");
-    const emp  = empRaw  ? JSON.parse(empRaw)  : null;
-    const cust = custRaw ? JSON.parse(custRaw) : null;
-    const prof = profRaw ? JSON.parse(profRaw) : {};
+    const employee = localStorage.getItem("user");
+    const customer = localStorage.getItem("customer");
+    const customerProfile = localStorage.getItem("customerProfile");
 
-    let baseName = "", baseEmail = "", basePhone = "", basePic = "";
-    if (emp)  { baseName = `${emp.firstName||""} ${emp.lastName||""}`.trim(); baseEmail = emp.email||""; basePhone = emp.phone||""; basePic = emp.profilePicture||""; }
-    else if (cust) { baseName = cust.name||""; baseEmail = cust.email||""; basePhone = cust.phone||""; basePic = cust.profilePicture||""; }
+    const employeeObj = employee ? JSON.parse(employee) : null;
+    const customerObj = customer ? JSON.parse(customer) : null;
 
-    const name   = prof.name || baseName;
-    const parts  = name.trim().split(" ").filter(Boolean);
-    const localPic = prof.profilePicture || basePic || "";
+    let baseName = "";
+    let baseEmail = "";
+    let basePhone = "";
+    let basePic = "";
 
-    setForm({ firstName: parts[0]||"", lastName: parts.slice(1).join(" "), email: prof.email||baseEmail, phone: prof.phone||basePhone, address: prof.address||"", nicNumber: prof.nicNumber||"", profilePicture: localPic });
+    if (employeeObj) {
+      baseName = `${employeeObj.firstName || ""} ${employeeObj.lastName || ""}`.trim();
+      baseEmail = employeeObj.email || "";
+      basePhone = employeeObj.phone || "";
+      basePic = employeeObj.profilePicture || "";
+    } else if (customerObj) {
+      baseName = customerObj.name || "";
+      baseEmail = customerObj.email || "";
+      basePhone = customerObj.phone || "";
+      basePic = customerObj.profilePicture || "";
+    }
+
+    const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
+
+    const nameToUse = profileObj.name || baseName;
+    const nameParts = nameToUse.trim().split(" ").filter(Boolean);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ");
+
+    // Load the profile picture if it exists
+    const localPic = profileObj.profilePicture || basePic || "";
+
+    setFormData({
+      firstName,
+      lastName,
+      email: profileObj.email || baseEmail || "",
+      phone: profileObj.phone || basePhone || "",
+      address: profileObj.address || "",
+      nicNumber: profileObj.nicNumber || "",
+      profilePicture: localPic,
+    });
+    
     if (localPic) setPreview(localPic);
 
     /* hydrate from DB */
-    if (cust) {
-      apiService.getCustomerProfile().then((r) => {
+    if (customerObj) {
+      apiService.getProfile().then((r) => {
         if (r.success && r.data) {
           const dbPic = r.data.profilePicture || "";
           const dbParts = (r.data.name||"").trim().split(" ").filter(Boolean);
-          setForm(prev => ({ ...prev, firstName: dbParts[0]||prev.firstName, lastName: dbParts.slice(1).join(" ")||prev.lastName, phone: r.data.phone||prev.phone, address: r.data.address||prev.address, nicNumber: r.data.nicNumber||prev.nicNumber, profilePicture: dbPic||prev.profilePicture }));
+          setFormData(prev => ({ 
+            ...prev, 
+            firstName: dbParts[0]||prev.firstName, 
+            lastName: dbParts.slice(1).join(" ")||prev.lastName, 
+            phone: r.data.phone||prev.phone, 
+            address: r.data.address||prev.address, 
+            nicNumber: r.data.nicNumber||prev.nicNumber, 
+            profilePicture: dbPic||prev.profilePicture 
+          }));
           if (dbPic) setPreview(dbPic);
-          localStorage.setItem("customerProfile", JSON.stringify({ ...prof, name: r.data.name, phone: r.data.phone, address: r.data.address, nicNumber: r.data.nicNumber, profilePicture: dbPic }));
-          localStorage.setItem("customer", JSON.stringify({ ...cust, name: r.data.name, phone: r.data.phone, profilePicture: dbPic }));
+          localStorage.setItem("customerProfile", JSON.stringify({ ...profileObj, name: r.data.name, phone: r.data.phone, address: r.data.address, nicNumber: r.data.nicNumber, profilePicture: dbPic }));
+          localStorage.setItem("customer", JSON.stringify({ ...customerObj, name: r.data.name, phone: r.data.phone, profilePicture: dbPic }));
         }
       }).catch(() => {});
     }
+
   }, []);
 
   if (!isAuthenticated) return <Navigate to="/login" />;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,34 +187,77 @@ export default function ProfileEdit() {
     setCropLoading(true);
     try {
       const cropped = await getCroppedImg(rawImg, croppedPx);
-      if (cropped) { setPreview(cropped); setForm(p => ({ ...p, profilePicture: cropped })); toast.success("Photo cropped! Save when ready."); }
+      if (cropped) { setPreview(cropped); setFormData(p => ({ ...p, profilePicture: cropped })); toast.success("Photo cropped! Save when ready."); }
     } catch { toast.error("Crop failed, please retry."); }
     finally { setCropLoading(false); setShowCrop(false); }
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const name = `${form.firstName} ${form.lastName}`.trim();
-    const prof  = JSON.parse(localStorage.getItem("customerProfile") || "{}");
-    localStorage.setItem("customerProfile", JSON.stringify({ ...prof, name, email: form.email, phone: form.phone, address: form.address, nicNumber: form.nicNumber, profilePicture: form.profilePicture }));
-    const empRaw = localStorage.getItem("user");
-    if (empRaw) { const e = JSON.parse(empRaw); localStorage.setItem("user", JSON.stringify({ ...e, firstName: form.firstName, lastName: form.lastName, email: form.email, phone: form.phone, profilePicture: form.profilePicture })); }
-    const custRaw = localStorage.getItem("customer");
-    if (custRaw) {
+    const name = `${formData.firstName} ${formData.lastName}`.trim();
+    const existingProfile = JSON.parse(localStorage.getItem("customerProfile") || "{}");
+    const nextProfile = {
+      ...existingProfile,
+      name,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address.trim(),
+      nicNumber: formData.nicNumber,
+      profilePicture: preview || formData.profilePicture
+    };
+
+    localStorage.setItem("customerProfile", JSON.stringify(nextProfile));
+
+    const employee = localStorage.getItem("user");
+    if (employee) {
+      const employeeObj = JSON.parse(employee);
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...employeeObj,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          profilePicture: formData.profilePicture
+        })
+      );
+    }
+
+    const customer = localStorage.getItem("customer");
+    if (customer) {
       try {
-        const res = await apiService.updateCustomerProfile({ name, phone: form.phone, address: form.address, nicNumber: form.nicNumber, profilePicture: form.profilePicture });
+        const res = await apiService.updateProfile(nextProfile);
         if (res.success && res.data) {
-          const c = JSON.parse(custRaw);
-          localStorage.setItem("customer", JSON.stringify({ ...c, name: res.data.name, email: form.email, phone: res.data.phone, profilePicture: res.data.profilePicture }));
+          const customerObj = JSON.parse(customer);
+          localStorage.setItem(
+            "customer",
+            JSON.stringify({
+              ...customerObj,
+              name: res.data.name,
+              email: formData.email,
+              phone: res.data.phone,
+              loyaltyPoints: res.data.loyaltyPoints || customerObj.loyaltyPoints,
+              profilePicture: res.data.profilePicture
+            })
+          );
           toast.success("Profile saved successfully! ✅");
-        } else { toast.error(res.message || "Save failed."); }
-      } catch { toast.error("Network error – saved locally."); }
-    } else { toast.success("Profile saved! ✅"); }
+        } else {
+          toast.error(res.message || "Save failed.");
+        }
+      } catch (err) {
+        console.error("Failed to update profile to API", err);
+        toast.error("Network error – saved locally.");
+      }
+    } else {
+      toast.success("Profile saved! ✅");
+    }
+
     setSaving(false);
     setTimeout(() => navigate("/profile"), 700);
   };
 
-  const displayName = `${form.firstName} ${form.lastName}`.trim() || "Customer";
+  const displayName = `${formData.firstName} ${formData.lastName}`.trim() || "Customer";
   const loyaltyPts  = JSON.parse(localStorage.getItem("customer") || "{}")?.loyaltyPoints || 0;
   const orders      = JSON.parse(localStorage.getItem("customerOrders") || "[]").length;
 
@@ -221,6 +321,8 @@ export default function ProfileEdit() {
     cancelCropBtn: { flex: 1, padding: "13px 0", borderRadius: 12, border: "2px solid #e5e7eb", cursor: "pointer", fontSize: 14, fontWeight: 600, background: "#fff", color: "#6b7280", transition: "all 0.15s" } as React.CSSProperties,
   };
 
+  function handleCropCancel() { setShowCrop(false); setRawImg(null); }
+
   return (
     <div style={S.page}>
       {/* hidden file input */}
@@ -273,7 +375,7 @@ export default function ProfileEdit() {
             {/* info */}
             <div style={S.heroInfo}>
               <p style={S.heroName}>{displayName}</p>
-              <p style={S.heroEmail}>{form.email}</p>
+              <p style={S.heroEmail}>{formData.email}</p>
               <p style={S.heroHint}>Click the photo to update it</p>
               <div style={S.heroPills}>
                 <span style={S.pill}>🏆 {loyaltyPts} Points</span>
@@ -289,22 +391,21 @@ export default function ProfileEdit() {
             <p style={S.formHeaderTitle}>Personal Information</p>
             <p style={S.formHeaderSub}>Update your details below and hit Save Changes</p>
           </div>
-
           <div style={S.formBody}>
             <div style={S.grid2}>
-              <Field label="First Name" id="firstName" name="firstName" value={form.firstName} onChange={handleChange} placeholder="John" icon="👤" />
-              <Field label="Last Name"  id="lastName"  name="lastName"  value={form.lastName}  onChange={handleChange} placeholder="Doe"  icon="👤" />
+              <Field label="First Name" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="John" icon="👤" />
+              <Field label="Last Name"  id="lastName"  name="lastName"  value={formData.lastName}  onChange={handleChange} placeholder="Doe"  icon="👤" />
             </div>
 
             <div style={S.divider} />
 
             <div style={S.grid2}>
-              <Field label="Email Address" id="email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="john@email.com" icon="✉️" />
-              <Field label="Phone Number"  id="phone" name="phone"              value={form.phone} onChange={handleChange} placeholder="+94 77 000 0000"  icon="📞" />
+              <Field label="Email Address" id="email" name="email" type="email" value={formData.email} onChange={handleChange} placeholder="john@email.com" icon="✉️" />
+              <Field label="Phone Number"  id="phone" name="phone"              value={formData.phone} onChange={handleChange} placeholder="+94 77 000 0000"  icon="📞" />
             </div>
 
-            <Field label="Delivery Address" id="address" name="address" value={form.address} onChange={handleChange} placeholder="123 Main St, Colombo" icon="🏠" />
-            <Field label="NIC Number"       id="nicNumber" name="nicNumber" value={form.nicNumber} onChange={handleChange} placeholder="e.g. 991234567V" icon="🪪" />
+            <Field label="Delivery Address" id="address" name="address" value={formData.address} onChange={handleChange} placeholder="123 Main St, Colombo" icon="🏠" />
+            <Field label="NIC Number"       id="nicNumber" name="nicNumber" value={formData.nicNumber} onChange={handleChange} placeholder="e.g. 991234567V" icon="🪪" />
 
             <div style={S.divider} />
 
@@ -391,6 +492,5 @@ export default function ProfileEdit() {
       )}
     </div>
   );
-
-  function handleCropCancel() { setShowCrop(false); setRawImg(null); }
 }
+

@@ -1,27 +1,6 @@
-// Simple in-memory activity tracker for immediate functionality
-let activities = [];
+const Activity = require('../models/Activity');
 
-const addActivity = (action, description, user, amount, entityType, entityId) => {
-  const activity = {
-    time: getTimeAgo(new Date()),
-    action: description,
-    amount: amount,
-    user: user,
-    createdAt: new Date()
-  };
-  
-  activities.unshift(activity); // Add to beginning
-  if (activities.length > 50) {
-    activities = activities.slice(0, 50); // Keep only last 50 activities
-  }
-  
-  console.log('Activity added:', activity);
-};
-
-const getActivities = () => {
-  return activities;
-};
-
+// Helper function to format time ago
 const getTimeAgo = (date) => {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000);
   
@@ -46,6 +25,48 @@ const getTimeAgo = (date) => {
     return Math.floor(interval) + " mins ago";
   }
   return Math.floor(seconds) + " secs ago";
+};
+
+/**
+ * Log a new activity in the MongoDB collection
+ */
+const addActivity = async (action, description, user, userId, amount, entityType, entityId) => {
+  try {
+    const activity = await Activity.create({
+      action,
+      description,
+      user,
+      userId,
+      amount,
+      entityType,
+      entityId
+    });
+    console.log('Activity logged to DB:', activity._id);
+    return activity;
+  } catch (error) {
+    console.error('Error logging activity to DB:', error);
+  }
+};
+
+/**
+ * Fetch last 50 activities from the DB formatted for the dashboard UI
+ */
+const getActivities = async () => {
+  try {
+    const dbActivities = await Activity.find()
+      .sort({ createdAt: -1 })
+      .limit(50);
+      
+    return dbActivities.map(activity => ({
+      action: activity.description, // Map description to action for frontend display compatibility
+      time: getTimeAgo(activity.createdAt),
+      user: activity.user,
+      amount: activity.amount || ''
+    }));
+  } catch (error) {
+    console.error('Error getting activities from DB:', error);
+    return [];
+  }
 };
 
 module.exports = {

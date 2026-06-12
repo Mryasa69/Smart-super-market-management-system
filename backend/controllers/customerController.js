@@ -1,4 +1,5 @@
 const Customer = require('../models/Customer');
+const Order = require('../models/Order');
 const { validationResult } = require('express-validator');
 
 // @desc    Get current customer profile (for logged-in customers)
@@ -93,6 +94,34 @@ exports.getCustomerStats = async (req, res) => {
     res.json({
       success: true,
       data: { totalCustomers, avgLoyaltyPoints, totalRevenue, platinumMembers },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get orders for a customer
+// @route   GET /api/customers/:id/orders
+// @access  Private (admin, cashier)
+exports.getCustomerOrders = async (req, res) => {
+  try {
+    const customer = await Customer.findById(req.params.id);
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    const orders = await Order.find({
+      customerId: customer._id,
+      $or: [
+        { paymentStatus: { $exists: false } },
+        { paymentStatus: { $ne: 'pending' } },
+      ],
+    }).sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: orders.length,
+      data: orders,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

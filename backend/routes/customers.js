@@ -7,6 +7,7 @@ const {
   getCustomers,
   getCustomerStats,
   getCustomerById,
+  getCustomerOrders,
   createCustomer,
   updateCustomer,
   addPoints,
@@ -17,13 +18,16 @@ const {
 router.get('/me', protect, getMe);
 
 // @route   GET /api/customers
-router.get('/', protect, getCustomers);
+router.get('/', protect, authorize('admin', 'cashier'), getCustomers);
 
 // @route   GET /api/customers/stats/overview
-router.get('/stats/overview', protect, getCustomerStats);
+router.get('/stats/overview', protect, authorize('admin', 'cashier'), getCustomerStats);
+
+// @route   GET /api/customers/:id/orders
+router.get('/:id/orders', protect, authorize('admin', 'cashier'), getCustomerOrders);
 
 // @route   GET /api/customers/:id
-router.get('/:id', protect, getCustomerById);
+router.get('/:id', protect, authorize('admin', 'cashier'), getCustomerById);
 
 // @route   POST /api/customers
 router.post(

@@ -20,10 +20,12 @@ interface ValidationErrors {
   general?: string;
 }
 
-export default function CustomerRegister() {
+interface CustomerRegisterProps {
+  onLogin?: (role: 'customer') => void;
+}
+export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
   const location = useLocation();
   const initialEmail = location.state?.email || '';
-
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: initialEmail,
@@ -227,8 +229,11 @@ export default function CustomerRegister() {
           if (cartRes.success && cartRes.data) {
             localStorage.setItem('cart', JSON.stringify(cartRes.data.items || []));
           }
-        } catch {}
-
+        } catch (cartError) {
+          console.error('Error ensuring customer cart on register:', cartError);
+        }
+        
+        onLogin?.('customer');
         navigate('/');
       } else {
         setErrors({ general: data.message || 'Registration failed' });

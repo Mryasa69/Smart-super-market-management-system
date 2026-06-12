@@ -54,6 +54,20 @@ const customerSchema = new mongoose.Schema(
       enum: ['Bronze', 'Silver', 'Gold', 'Platinum'],
       default: 'Bronze',
     },
+    address: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    nicNumber: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    role: {
+      type: String,
+      default: 'customer',
+    },
     joinDate: {
       type: Date,
       default: Date.now,

@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, Heart, Award, MapPin, Phone, Mail, CreditCard, ChevronRight } from "lucide-react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { ArrowLeft, User, Heart, Award, MapPin, Phone, Mail, CreditCard, ChevronRight } from "lucide-react";
+import { Button } from "../ui/button";
+import { Card } from "../ui/card";
+import { Progress } from "../ui/progress";
+import { apiService } from "../../services/api";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("profile");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    () => (location.state as { tab?: string } | null)?.tab ?? "profile"
+  );
   const [btnHover, setBtnHover] = useState<{ [key: string]: boolean }>({});
+  
   const [userData, setUserData] = useState({
     name: "",
     email: "",
@@ -18,44 +26,104 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    const employee = localStorage.getItem("user");
-    const customer = localStorage.getItem("customer");
-    const customerProfile = localStorage.getItem("customerProfile");
-    const customerOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
-
-    const employeeObj = employee ? JSON.parse(employee) : null;
-    const customerObj = customer ? JSON.parse(customer) : null;
-    
-    let baseName = "";
-    let baseEmail = "";
-    let basePhone = "";
-    let basePic = "";
-
-    if (employeeObj) {
-      baseName = `${employeeObj.firstName || ""} ${employeeObj.lastName || ""}`.trim();
-      baseEmail = employeeObj.email || "";
-      basePhone = employeeObj.phone || "";
-      basePic = employeeObj.profilePicture || "";
-    } else if (customerObj) {
-      baseName = customerObj.name || "";
-      baseEmail = customerObj.email || "";
-      basePhone = customerObj.phone || "";
-      basePic = customerObj.profilePicture || "";
+    const tab = (location.state as { tab?: string } | null)?.tab;
+    if (tab && ["profile", "wishlist", "loyalty"].includes(tab)) {
+      setActiveTab(tab);
     }
+  }, [location.state]);
 
-    const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      // Base logic for basic info
+      const employee = localStorage.getItem("user");
+      const customer = localStorage.getItem("customer");
+      
+      const employeeObj = employee ? JSON.parse(employee) : null;
+      const customerObj = customer ? JSON.parse(customer) : null;
+      
+      let baseName = "";
+      let baseEmail = "";
+      let basePhone = "";
+      let basePic = "";
 
-    setUserData({
-      name: profileObj.name || baseName || "Customer",
-      email: profileObj.email || baseEmail || "",
-      points: profileObj.points || customerObj?.loyaltyPoints || 0,
-      orders: customerOrders.length,
-      phone: profileObj.phone || basePhone || "",
-      address: profileObj.address || "",
-      nicNumber: profileObj.nicNumber || "",
-      profilePicture: profileObj.profilePicture || basePic || "",
-    });
-  }, []);
+      if (employeeObj) {
+        baseName = `${employeeObj.firstName || ""} ${employeeObj.lastName || ""}`.trim();
+        baseEmail = employeeObj.email || "";
+        basePhone = employeeObj.phone || "";
+        basePic = employeeObj.profilePicture || "";
+      } else if (customerObj) {
+        baseName = customerObj.name || "";
+        baseEmail = customerObj.email || "";
+        basePhone = customerObj.phone || "";
+        basePic = customerObj.profilePicture || "";
+      }
+
+      const initialProfile = JSON.parse(localStorage.getItem("customerProfile") || "{}");
+      const initialOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+
+      setUserData({
+        name: initialProfile.name || baseName || "Customer",
+        email: initialProfile.email || baseEmail || "",
+        points: initialProfile.points || customerObj?.loyaltyPoints || 0,
+        orders: initialOrders.length,
+        phone: initialProfile.phone || basePhone || "",
+        address: initialProfile.address || "",
+        nicNumber: initialProfile.nicNumber || "",
+        profilePicture: initialProfile.profilePicture || basePic || "",
+      });
+
+      // Fetch from API if customer
+      const token = localStorage.getItem("customerToken");
+      if (token && customerObj) {
+        try {
+          const [profileRes, ordersRes] = await Promise.all([
+            apiService.getProfile(),
+            apiService.getOrders()
+          ]);
+
+          if (profileRes.success && profileRes.data) {
+            const serverProfile = profileRes.data;
+            setUserData(prev => ({
+              ...prev,
+              name: serverProfile.name || prev.name,
+              email: serverProfile.email || prev.email,
+              points: serverProfile.loyaltyPoints || prev.points,
+              phone: serverProfile.phone || prev.phone,
+              address: serverProfile.address || prev.address,
+              nicNumber: serverProfile.nicNumber || prev.nicNumber,
+              profilePicture: serverProfile.profilePicture || prev.profilePicture,
+            }));
+            
+            // Sync to local storage
+            localStorage.setItem("customerProfile", JSON.stringify({
+              ...initialProfile,
+              name: serverProfile.name,
+              email: serverProfile.email,
+              phone: serverProfile.phone,
+              address: serverProfile.address,
+              nicNumber: serverProfile.nicNumber,
+              points: serverProfile.loyaltyPoints,
+              profilePicture: serverProfile.profilePicture
+            }));
+            
+            localStorage.setItem("customer", JSON.stringify({
+              ...customerObj,
+              ...serverProfile
+            }));
+          }
+
+          if (ordersRes.success && ordersRes.data) {
+            setUserData(prev => ({ ...prev, orders: ordersRes.data.length }));
+            localStorage.setItem("customerOrders", JSON.stringify(ordersRes.data));
+          }
+        } catch (err) {
+          console.error("Failed to fetch profile data:", err);
+        }
+      }
+    };
+
+    fetchProfileData();
+  }, [location.pathname]);
 
   const rewards = [
     {
@@ -454,4 +522,5 @@ export default function Profile() {
     </div>
   );
 }
+
 

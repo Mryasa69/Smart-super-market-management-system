@@ -81,7 +81,12 @@ exports.createEmployee = async (req, res) => {
 
     // Also create a User account for login
     const nameParts = name.split(' ');
-    const userRole = role === 'Admin' ? 'admin' : role === 'Stock Manager' ? 'stock_manager' : 'cashier';
+    const lowerRole = role.toLowerCase();
+    const userRole = lowerRole === 'admin' 
+      ? 'admin' 
+      : lowerRole === 'stock_manager' 
+        ? 'stock_manager' 
+        : 'cashier';
 
     await User.create({
       firstName: nameParts[0],
@@ -105,6 +110,11 @@ exports.updateEmployee = async (req, res) => {
     console.log('Updating employee with ID:', req.params.id);
     console.log('Request body:', req.body);
     
+    const oldEmployee = await Employee.findById(req.params.id);
+    if (!oldEmployee) {
+      return res.status(404).json({ success: false, message: 'Employee not found' });
+    }
+
     // Only allow updating valid fields
     const { name, email, phone, role, joinDate, status } = req.body;
     const updateData = {};
@@ -123,9 +133,29 @@ exports.updateEmployee = async (req, res) => {
       runValidators: true,
     });
 
-    if (!employee) {
-      return res.status(404).json({ success: false, message: 'Employee not found' });
+    // Sync updates to corresponding login account in User collection
+    const userUpdate = {};
+    if (name !== undefined) {
+      const nameParts = name.split(' ');
+      userUpdate.firstName = nameParts[0];
+      userUpdate.lastName = nameParts.slice(1).join(' ') || nameParts[0];
     }
+    if (email !== undefined) {
+      userUpdate.email = email;
+    }
+    if (role !== undefined) {
+      const lowerRole = role.toLowerCase();
+      userUpdate.role = lowerRole === 'admin' 
+        ? 'admin' 
+        : lowerRole === 'stock_manager' 
+          ? 'stock_manager' 
+          : 'cashier';
+    }
+    if (status !== undefined) {
+      userUpdate.isActive = status === 'active';
+    }
+
+    await User.findOneAndUpdate({ email: oldEmployee.email }, userUpdate);
 
     console.log('Updated employee:', employee);
     res.json({ success: true, data: employee });

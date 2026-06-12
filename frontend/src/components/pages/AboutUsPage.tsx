@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Target, Eye, Award, Users, Leaf, Heart } from 'lucide-react';
+import { actionButtonClass } from '../../lib/actionButton';
 
 const values = [
   {
@@ -45,7 +46,7 @@ export default function AboutUsPage() {
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/" className="flex items-center gap-2 text-green-700 hover:text-green-800">
+          <Link to="/" className={`inline-flex items-center gap-2 ${actionButtonClass}`}>
             <ArrowLeft className="w-5 h-5" />
             <span>Back to Home</span>
           </Link>
@@ -160,30 +161,35 @@ export default function AboutUsPage() {
       </section>
 
       {/* Timeline */}
-      <section className="bg-green-50 py-16">
+      <section className="bg-green-50 py-20">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-gray-800 mb-4">Our Journey</h2>
-            <p className="text-gray-600">Milestones that shaped our success</p>
+          <div className="text-center mb-16">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-3">Our Journey</h2>
+            <p className="text-gray-500">Milestones that shaped our success</p>
           </div>
-          <div className="max-w-4xl mx-auto">
-            <div className="relative">
-              {/* Timeline Line */}
-              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-green-300 transform -translate-x-1/2"></div>
-              
-              {milestones.map((milestone, index) => (
-                <div key={index} className={`relative mb-8 md:mb-12 ${index % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
-                  <div className={`md:w-1/2 ${index % 2 === 0 ? 'md:pr-12' : 'md:ml-auto md:pl-12'}`}>
-                    <div className="bg-white p-6 rounded-lg shadow-sm">
-                      <div className="text-green-700 mb-2">{milestone.year}</div>
+
+          <div className="journey-timeline">
+            <div className="journey-timeline-line" />
+
+            <div className="journey-timeline-items">
+              {milestones.map((milestone, index) => {
+                const isLeft = index % 2 === 0;
+
+                return (
+                  <div key={index} className="journey-timeline-item">
+                    <div className="journey-timeline-dot" />
+                    <div
+                      className={`journey-timeline-card ${
+                        isLeft ? 'journey-timeline-card-left' : 'journey-timeline-card-right'
+                      }`}
+                    >
+                      <div className="text-green-600 mb-1">{milestone.year}</div>
                       <h4 className="text-gray-800 mb-2">{milestone.title}</h4>
                       <p className="text-gray-600 text-sm">{milestone.description}</p>
                     </div>
                   </div>
-                  {/* Timeline Dot */}
-                  <div className="hidden md:block absolute top-6 left-1/2 w-4 h-4 bg-green-600 rounded-full transform -translate-x-1/2 border-4 border-green-50"></div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

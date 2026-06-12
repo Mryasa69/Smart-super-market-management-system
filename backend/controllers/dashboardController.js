@@ -125,8 +125,8 @@ exports.getDashboardData = async (req, res) => {
       profit: Math.round(item.profit),
     }));
 
-    // Get real recent activities using in-memory tracker
-    const recentActivities = getActivities();
+    // Get real recent activities using DB tracker
+    const recentActivities = await getActivities();
 
     res.json({
       success: true,
