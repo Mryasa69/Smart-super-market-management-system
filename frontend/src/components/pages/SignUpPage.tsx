@@ -200,7 +200,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -281,9 +281,8 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                     placeholder="Enter first name"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                      errors.firstName ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.firstName ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     required
                   />
                 </div>
@@ -304,9 +303,8 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                     placeholder="Enter last name"
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                      errors.lastName ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.lastName ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     required
                   />
                 </div>
@@ -335,9 +333,8 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   }}
                   placeholder="Enter your email"
                   disabled={otpSent || otpVerified}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:bg-gray-100 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:bg-gray-100 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   required
                 />
                 {otpVerified && <ShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-600" />}
@@ -366,9 +363,8 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Enter password"
-                  className={`w-full pl-10 pr-12 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full pl-10 pr-12 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.password ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   required
                 />
                 <button
@@ -396,9 +392,8 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="Confirm password"
-                  className={`w-full pl-10 pr-12 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full pl-10 pr-12 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   required
                 />
                 <button
@@ -466,7 +461,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   type="button"
                   onClick={handleSendOTP}
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg"
+                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 font-medium text-lg"
                 >
                   {isLoading ? 'Sending OTP...' : <><Send className="w-5 h-5" /> Send OTP</>}
                 </button>
@@ -495,8 +490,12 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                           value={digit}
                           onChange={e => handleOtpChange(i, e.target.value)}
                           onKeyDown={e => handleOtpKeyDown(i, e)}
-                          className={`w-9 h-11 sm:w-11 sm:h-12 text-center text-lg sm:text-xl font-bold rounded-lg border-2 focus:ring-4 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all ${
-                            otpError ? 'border-red-400 bg-red-50 text-red-900' : digit ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-300'
+                          className={`w-16 h-16 text-center text-lg sm:text-2xl font-bold rounded-lg border-2 focus:ring-4 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all ${
+                          otpError
+                            ? 'border-red-400 bg-red-50 text-red-900'
+                            : digit
+                            ? 'border-green-500 bg-green-50 text-green-900'
+                            : 'border-gray-300'
                           }`}
                           autoFocus={i === 0}
                         />
@@ -512,7 +511,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                         type="button"
                         onClick={handleVerifyOTP}
                         disabled={isVerifying}
-                        className="w-full bg-green-600 text-white py-4 rounded-xl hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-bold text-xl shadow-lg"
+                        className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 font-bold text-xl shadow-lg"
                       >
                         {isVerifying ? 'Verifying...' : 'Okay'}
                       </button>
@@ -523,7 +522,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                         type="button"
                         onClick={handleResend}
                         disabled={resendCountdown > 0 || isResending}
-                        className="flex items-center gap-1.5 font-medium text-green-700 hover:text-green-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                        className="flex items-center gap-1.5 font-medium text-green-700 hover:text-green-800 disabled:text-gray-400"
                       >
                         <RefreshCw className={`w-4 h-4 ${isResending ? 'animate-spin' : ''}`} />
                         {isResending ? 'Sending...' : resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend Code'}
@@ -545,7 +544,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg"
+                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 font-medium text-lg"
                 >
                   {isLoading ? 'Signing Up...' : <><Check className="w-5 h-5" /> Sign Up</>}
                 </button>
