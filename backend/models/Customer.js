@@ -70,6 +70,18 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationOTP: {
+      type: String,
+      default: null,
+    },
+    verificationOTPExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
