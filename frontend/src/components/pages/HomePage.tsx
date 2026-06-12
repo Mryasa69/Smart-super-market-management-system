@@ -145,6 +145,14 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
+    if (apiService.isCustomerAuthenticated()) {
+      const customerObj = apiService.getStoredCustomer();
+      setMemberRole('customer');
+      setMemberDisplayName(customerObj?.name || 'Customer');
+      setMemberEmail(customerObj?.email || '');
+      return;
+    }
+
     const employeeUser = apiService.getStoredUser();
     if (employeeUser?.role) {
       setMemberRole(employeeUser.role as 'customer' | 'admin' | 'cashier' | 'stock_manager');
@@ -152,16 +160,6 @@ export default function HomePage() {
         [employeeUser.firstName, employeeUser.lastName].filter(Boolean).join(' ') || employeeUser.email || 'Member'
       );
       setMemberEmail(employeeUser.email || '');
-      return;
-    }
-
-    const customerToken = localStorage.getItem('customerToken');
-    const customer = localStorage.getItem('customer');
-    if (customerToken && customer) {
-      const customerObj = JSON.parse(customer);
-      setMemberRole('customer');
-      setMemberDisplayName(customerObj?.name || 'Customer');
-      setMemberEmail(customerObj?.email || '');
       return;
     }
 
@@ -407,9 +405,9 @@ export default function HomePage() {
                           <p className="px-4 py-2 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Activities</p>
                           {accountMenuItems.map((item) => (
                             <button
-                              key={item.path}
+                              key={item.label}
                               onClick={() => {
-                                navigate(item.path);
+                                navigate(item.path, 'state' in item ? { state: item.state } : undefined);
                                 setIsAccountMenuOpen(false);
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors cursor-pointer"
@@ -455,7 +453,7 @@ export default function HomePage() {
           <div className="container mx-auto px-4">
             <ul className="flex items-center gap-8 py-3">
               <li><a href="#" className="hover:text-green-200">Home</a></li>
-              <li><a href="#categories" className="hover:text-green-200">Shop by Category</a></li>
+              <li><Link to="/products" className="hover:text-green-200">Shop by Category</Link></li>
               <li><a href="#offers" className="hover:text-green-200">Special Offers</a></li>
               <li><a href="#weekly-deals" className="hover:text-green-200">Weekly Deals</a></li>
               <li><a href="/contact" className="hover:text-green-200">Contact Us</a></li>
@@ -471,7 +469,10 @@ export default function HomePage() {
             <div>
               <h2 className="text-green-700 mb-4">Fresh Groceries Delivered to Your Doorstep</h2>
               <p className="text-gray-600 mb-6">Shop from our wide range of fresh fruits, vegetables, dairy products, and more. Quality guaranteed!</p>
-              <button className="bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800">
+              <button
+                onClick={() => navigate('/products')}
+                className="bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800"
+              >
                 Shop Now
               </button>
             </div>

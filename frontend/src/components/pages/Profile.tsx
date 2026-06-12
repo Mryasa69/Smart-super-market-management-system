@@ -1,14 +1,18 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useLocation } from "react-router";
 import { ArrowLeft, User, Heart, Award } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Progress } from "../ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { actionButtonClass, actionButtonDisabledClass } from "../../lib/actionButton";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("profile");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(
+    () => (location.state as { tab?: string } | null)?.tab ?? "profile"
+  );
   const [userData, setUserData] = useState({
     name: "",
     email: "",
@@ -20,40 +24,97 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    const employee = localStorage.getItem("user");
-    const customer = localStorage.getItem("customer");
-    const customerProfile = localStorage.getItem("customerProfile");
-    const customerOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
-
-    const employeeObj = employee ? JSON.parse(employee) : null;
-    const customerObj = customer ? JSON.parse(customer) : null;
-    
-    let baseName = "";
-    let baseEmail = "";
-    let basePhone = "";
-
-    if (employeeObj) {
-      baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
-      baseEmail = employeeObj.email || "";
-      basePhone = employeeObj.phone || "";
-    } else if (customerObj) {
-      baseName = customerObj.name || "";
-      baseEmail = customerObj.email || "";
-      basePhone = customerObj.phone || "";
+    const tab = (location.state as { tab?: string } | null)?.tab;
+    if (tab && ["profile", "wishlist", "loyalty"].includes(tab)) {
+      setActiveTab(tab);
     }
+  }, [location.state]);
 
-    const profileObj = customerProfile ? JSON.parse(customerProfile) : {};
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      // Base logic for basic info
+      const employee = localStorage.getItem("user");
+      const customer = localStorage.getItem("customer");
+      const employeeObj = employee ? JSON.parse(employee) : null;
+      const customerObj = customer ? JSON.parse(customer) : null;
 
-    setUserData({
-      name: profileObj.name || baseName || "Customer",
-      email: profileObj.email || baseEmail || "",
-      points: profileObj.points || customerObj?.loyaltyPoints || 0,
-      orders: customerOrders.length,
-      phone: profileObj.phone || basePhone || "",
-      address: profileObj.address || "",
-      nicNumber: profileObj.nicNumber || "",
-    });
-  }, []);
+      let baseName = "";
+      let baseEmail = "";
+      let basePhone = "";
+
+      if (employeeObj) {
+        baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
+        baseEmail = employeeObj.email || "";
+        basePhone = employeeObj.phone || "";
+      } else if (customerObj) {
+        baseName = customerObj.name || "";
+        baseEmail = customerObj.email || "";
+        basePhone = customerObj.phone || "";
+      }
+
+      const initialProfile = JSON.parse(localStorage.getItem("customerProfile") || "{}");
+      const initialOrders = JSON.parse(localStorage.getItem("customerOrders") || "[]");
+
+      setUserData({
+        name: initialProfile.name || baseName || "Customer",
+        email: initialProfile.email || baseEmail || "",
+        points: initialProfile.points || customerObj?.loyaltyPoints || 0,
+        orders: initialOrders.length,
+        phone: initialProfile.phone || basePhone || "",
+        address: initialProfile.address || "",
+        nicNumber: initialProfile.nicNumber || "",
+      });
+
+      // Fetch from API if customer
+      const token = localStorage.getItem("customerToken");
+      if (token && customerObj) {
+        try {
+          const [profileRes, ordersRes] = await Promise.all([
+            apiService.getProfile(),
+            apiService.getOrders()
+          ]);
+
+          if (profileRes.success && profileRes.data) {
+            const serverProfile = profileRes.data;
+            setUserData(prev => ({
+              ...prev,
+              name: serverProfile.name || prev.name,
+              email: serverProfile.email || prev.email,
+              points: serverProfile.loyaltyPoints || prev.points,
+              phone: serverProfile.phone || prev.phone,
+              address: serverProfile.address || prev.address,
+              nicNumber: serverProfile.nicNumber || prev.nicNumber,
+            }));
+            
+            // Sync to local storage
+            localStorage.setItem("customerProfile", JSON.stringify({
+              ...initialProfile,
+              name: serverProfile.name,
+              email: serverProfile.email,
+              phone: serverProfile.phone,
+              address: serverProfile.address,
+              nicNumber: serverProfile.nicNumber,
+              points: serverProfile.loyaltyPoints
+            }));
+            
+            localStorage.setItem("customer", JSON.stringify({
+              ...customerObj,
+              ...serverProfile
+            }));
+          }
+
+          if (ordersRes.success && ordersRes.data) {
+            setUserData(prev => ({ ...prev, orders: ordersRes.data.length }));
+            localStorage.setItem("customerOrders", JSON.stringify(ordersRes.data));
+          }
+        } catch (err) {
+          console.error("Failed to fetch profile data:", err);
+        }
+      }
+    };
+
+    fetchProfileData();
+  }, [location.pathname]);
 
   const rewards = [
     {
@@ -110,28 +171,21 @@ export default function Profile() {
         {/* Left: Continue Shopping */}
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-green-600"
+          className={`flex items-center gap-2 ${actionButtonClass}`}
         >
           ← Continue Shopping
         </button>
 
-        {/* Center: Shopping Cart */}
         <button
           onClick={() => navigate("/cart")}
-          className="flex items-center gap-2 text-green-600"
+          className={`flex items-center gap-2 ${actionButtonClass}`}
         >
           🛒 Shopping Cart
         </button>
 
-
-        <div className="flex items-center gap-4">
-          <Link to="/cart"  className="flex items-center gap-2 text-green-600">
-            Cart
-          </Link>
-          <Link to="/orders"  className="flex items-center gap-2 text-green-600">
-            Orders
-          </Link>
-        </div>
+        <Link to="/orders" className={`flex items-center gap-2 ${actionButtonClass}`}>
+          Orders
+        </Link>
       </div>
 
       <h1 className="text-2xl mb-6">My Profile</h1>
@@ -160,21 +214,21 @@ export default function Profile() {
         <TabsList className="w-full bg-white border rounded-xl p-1 mb-6">
           <TabsTrigger
             value="profile"
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 flex items-center gap-2 cursor-pointer rounded-lg data-[state=active]:bg-green-700 data-[state=active]:text-white data-[state=inactive]:text-green-700 hover:bg-green-100 data-[state=active]:hover:bg-green-800"
           >
             <User className="w-4 h-4" />
             Profile Details
           </TabsTrigger>
           <TabsTrigger
             value="wishlist"
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 flex items-center gap-2 cursor-pointer rounded-lg data-[state=active]:bg-green-700 data-[state=active]:text-white data-[state=inactive]:text-green-700 hover:bg-green-100 data-[state=active]:hover:bg-green-800"
           >
             <Heart className="w-4 h-4" />
             Wishlist
           </TabsTrigger>
           <TabsTrigger
             value="loyalty"
-            className="flex-1 flex items-center gap-2"
+            className="flex-1 flex items-center gap-2 cursor-pointer rounded-lg data-[state=active]:bg-green-700 data-[state=active]:text-white data-[state=inactive]:text-green-700 hover:bg-green-100 data-[state=active]:hover:bg-green-800"
           >
             <Award className="w-4 h-4" />
             LoyaltyPoints
@@ -186,7 +240,7 @@ export default function Profile() {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg">Personal Information</h3>
               <Link to="/profile/edit">
-                <Button variant="outline"  className="text-green-600 border-green-600 hover:bg-green-50">Edit Profile</Button>
+                <Button className={actionButtonClass}>Edit Profile</Button>
               </Link>
             </div>
 
@@ -289,12 +343,7 @@ export default function Profile() {
                       {reward.description}
                     </p>
                     <Button
-                      className={
-                        reward.available
-                          ? "w-full bg-green-600 hover:bg-green-700"
-                          : "w-full"
-                      }
-                      variant={reward.available ? "default" : "secondary"}
+                      className={`w-full ${reward.available ? actionButtonClass : actionButtonDisabledClass}`}
                       disabled={!reward.available}
                     >
                       {reward.available ? "Redeem Now" : "Need More points"}

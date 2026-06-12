@@ -29,6 +29,9 @@ app.use(
     credentials: true,
   })
 );
+// Stripe Webhooks (must be before express.json() so it gets raw body)
+app.use('/api/webhooks', require('./routes/webhooks'));
+
 app.use(express.json());
 app.use(morgan('dev'));
 

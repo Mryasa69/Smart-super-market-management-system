@@ -6,7 +6,6 @@ const {
   isStrongPassword,
   register,
   login,
-  registerCustomer,
   getMe
 } = require('../controllers/authController');
 
@@ -36,19 +35,6 @@ router.post(
     body('password').notEmpty().withMessage('Password is required'),
   ],
   login
-);
-
-// @route   POST /api/auth/register-customer
-router.post(
-  '/register-customer',
-  [
-    body('firstName').trim().notEmpty().withMessage('First name is required'),
-    body('lastName').trim().notEmpty().withMessage('Last name is required'),
-    body('email').isEmail().withMessage('Please enter a valid email'),
-    strongPasswordValidation,
-    body('phone').optional().isMobilePhone().withMessage('Please enter a valid phone number'),
-  ],
-  registerCustomer
 );
 
 // @route   GET /api/auth/me

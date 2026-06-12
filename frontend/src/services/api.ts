@@ -71,6 +71,19 @@ export type CustomerOrderItem = {
   total: number;
 };
 
+export type CustomerRecord = {
+  _id: string;
+  name: string;
+  email: string;
+  phone: string;
+  loyaltyPoints: number;
+  totalPurchases: number;
+  lastPurchase?: string | null;
+  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+  joinDate?: string;
+  createdAt?: string;
+};
+
 export type CustomerOrder = {
   _id: string;
   id?: string;
@@ -137,6 +150,49 @@ const apiService = {
     }
   },
 
+  isCustomerAuthenticated(): boolean {
+    const customerToken = localStorage.getItem('customerToken');
+    const customer = localStorage.getItem('customer');
+    if (customerToken && customer) return true;
+
+    const user = apiService.getStoredUser();
+    return user?.role === 'customer' && !!localStorage.getItem('token');
+  },
+
+  getStoredCustomer(): Record<string, any> | null {
+    const customerRaw = localStorage.getItem('customer');
+    if (customerRaw) {
+      try {
+        return JSON.parse(customerRaw);
+      } catch {
+        return null;
+      }
+    }
+
+    const user = apiService.getStoredUser();
+    if (user?.role === 'customer') {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+      const userRecord = user as AuthUser & {
+        name?: string;
+        phone?: string;
+        tier?: string;
+        loyaltyPoints?: number;
+        totalPurchases?: number;
+      };
+      return {
+        _id: user._id,
+        name: name || userRecord.name || user.email || 'Customer',
+        email: user.email || '',
+        phone: userRecord.phone || '',
+        tier: userRecord.tier || 'Bronze',
+        loyaltyPoints: userRecord.loyaltyPoints ?? 0,
+        totalPurchases: userRecord.totalPurchases ?? 0,
+      };
+    }
+
+    return null;
+  },
+
   saveAuthData(token: string, user: AuthUser) {
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
@@ -192,6 +248,36 @@ const apiService = {
     return data as ApiResponse<any>;
   },
 
+  async customerRegister(formData: any): Promise<ApiResponse<{ customer: any; token: string }>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async getProfile(): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/profile`, {
+      method: 'GET',
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async updateProfile(payload: any): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/profile`, {
+      method: 'PUT',
+      headers: apiService.privateHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
   async customerGoogleLogin(accessToken: string): Promise<ApiResponse<{ customer: any; token: string }>> {
     const res = await fetch(`${API_BASE_URL}/api/customer-auth/google-login`, {
       method: 'POST',
@@ -201,6 +287,30 @@ const apiService = {
 
     const data = await parseJsonSafe(res);
     return data as ApiResponse<any>;
+  },
+
+  async getSalesChart(): Promise<ApiResponse<any[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/sales/chart`, {
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any[]>;
+  },
+
+  async getWeeklySales(): Promise<ApiResponse<any[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/sales/weekly`, {
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any[]>;
+  },
+
+  async getCategorySales(): Promise<ApiResponse<any[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/sales/category`, {
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any[]>;
   },
 
   async getDashboardData(): Promise<ApiResponse<any>> {
@@ -448,6 +558,22 @@ const apiService = {
     });
     const data = await parseJsonSafe(res);
     return data as ApiResponse<CustomerOrder>;
+  },
+
+  async getCustomers(): Promise<ApiResponse<CustomerRecord[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/customers`, {
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerRecord[]>;
+  },
+
+  async getCustomerOrders(customerId: string): Promise<ApiResponse<CustomerOrder[]>> {
+    const res = await fetch(`${API_BASE_URL}/api/customers/${customerId}/orders`, {
+      headers: apiService.privateHeaders(),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<CustomerOrder[]>;
   },
 };
 

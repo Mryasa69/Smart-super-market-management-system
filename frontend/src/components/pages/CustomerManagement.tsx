@@ -1,89 +1,77 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
 import { Search, Star, Gift, TrendingUp, Mail, Phone } from 'lucide-react';
+import { apiService, CustomerRecord, CustomerOrder } from '../../services/api';
 
 interface CustomerManagementProps {
   userRole: 'admin' | 'cashier' | 'stock_manager' | null;
   onLogout: () => void;
 }
 
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  loyaltyPoints: number;
-  totalPurchases: number;
-  lastPurchase: string;
-  tier: 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
-  joinDate: string;
-}
-
-const initialCustomers: Customer[] = [
-  {
-    id: 1,
-    name: 'Kamal Perera',
-    email: 'kamal@email.com',
-    phone: '+94 77 111 2222',
-    loyaltyPoints: 2500,
-    totalPurchases: 125000,
-    lastPurchase: '2025-12-09',
-    tier: 'Gold',
-    joinDate: '2024-01-15',
-  },
-  {
-    id: 2,
-    name: 'Nimal Silva',
-    email: 'nimal@email.com',
-    phone: '+94 77 222 3333',
-    loyaltyPoints: 5000,
-    totalPurchases: 250000,
-    lastPurchase: '2025-12-10',
-    tier: 'Platinum',
-    joinDate: '2023-11-20',
-  },
-  {
-    id: 3,
-    name: 'Sunil Fernando',
-    email: 'sunil@email.com',
-    phone: '+94 77 333 4444',
-    loyaltyPoints: 800,
-    totalPurchases: 40000,
-    lastPurchase: '2025-12-08',
-    tier: 'Silver',
-    joinDate: '2024-05-10',
-  },
-  {
-    id: 4,
-    name: 'Chamari Jayasinghe',
-    email: 'chamari@email.com',
-    phone: '+94 77 444 5555',
-    loyaltyPoints: 1500,
-    totalPurchases: 75000,
-    lastPurchase: '2025-12-07',
-    tier: 'Gold',
-    joinDate: '2024-03-22',
-  },
-  {
-    id: 5,
-    name: 'Raveen Mendis',
-    email: 'raveen@email.com',
-    phone: '+94 77 555 6666',
-    loyaltyPoints: 350,
-    totalPurchases: 17500,
-    lastPurchase: '2025-12-06',
-    tier: 'Bronze',
-    joinDate: '2024-08-15',
-  },
-];
+const formatDate = (value?: string | null) => {
+  if (!value) return 'No purchases yet';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 export default function CustomerManagement({ userRole, onLogout }: CustomerManagementProps) {
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTier, setFilterTier] = useState('all');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRecord | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadCustomers = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await apiService.getCustomers();
+      if (response.success && response.data) {
+        setCustomers(response.data);
+      } else {
+        setError(response.message || 'Failed to load customers');
+      }
+    } catch (err) {
+      console.error('Error loading customers:', err);
+      setError('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const openCustomerDetails = async (customer: CustomerRecord) => {
+    setSelectedCustomer(customer);
+    setCustomerOrders([]);
+    setOrdersLoading(true);
+
+    try {
+      const response = await apiService.getCustomerOrders(customer._id);
+      if (response.success && response.data) {
+        setCustomerOrders(response.data);
+      }
+    } catch (err) {
+      console.error('Error loading customer orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   const tiers = ['all', 'Bronze', 'Silver', 'Gold', 'Platinum'];
+  const avgLoyaltyPoints = customers.length
+    ? Math.round(customers.reduce((sum, c) => sum + c.loyaltyPoints, 0) / customers.length)
+    : 0;
 
   const filteredCustomers = customers.filter((customer) => {
     const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,6 +105,10 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
           <p className="text-gray-600">Manage customer data and loyalty programs</p>
         </div>
 
+        {error && (
+          <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg">{error}</div>
+        )}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-md">
@@ -125,9 +117,7 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md">
             <p className="text-gray-600">Avg Loyalty Points</p>
-            <h2 className="text-blue-700">
-              {(customers.reduce((sum, c) => sum + c.loyaltyPoints, 0) / customers.length).toFixed(0)}
-            </h2>
+            <h2 className="text-blue-700">{avgLoyaltyPoints}</h2>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md">
             <p className="text-gray-600">Total Revenue</p>
@@ -214,12 +204,26 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
+                {loading ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                      Loading customers...
+                    </td>
+                  </tr>
+                ) : filteredCustomers.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                      No customers found yet. Customers appear here after they register and place orders.
+                    </td>
+                  </tr>
+                ) : filteredCustomers.map((customer) => (
+                  <tr key={customer._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-gray-900">{customer.name}</p>
-                        <p className="text-sm text-gray-500">Member since {customer.joinDate}</p>
+                        <p className="text-sm text-gray-500">
+                          Member since {formatDate(customer.joinDate || customer.createdAt)}
+                        </p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -252,10 +256,10 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
                         <span className="text-gray-900">Rs. {customer.totalPurchases.toLocaleString()}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">{customer.lastPurchase}</td>
+                    <td className="px-6 py-4 text-gray-600">{formatDate(customer.lastPurchase)}</td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => setSelectedCustomer(customer)}
+                        onClick={() => openCustomerDetails(customer)}
                         className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100"
                       >
                         View Details
@@ -289,7 +293,7 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
                   </div>
                   <div>
                     <p className="text-gray-600 text-sm">Member Since</p>
-                    <p className="text-gray-900">{selectedCustomer.joinDate}</p>
+                    <p className="text-gray-900">{formatDate(selectedCustomer.joinDate || selectedCustomer.createdAt)}</p>
                   </div>
                   <div>
                     <p className="text-gray-600 text-sm">Tier</p>
@@ -311,26 +315,33 @@ export default function CustomerManagement({ userRole, onLogout }: CustomerManag
                   </div>
                   <div>
                     <p className="text-gray-600 text-sm">Last Purchase</p>
-                    <p className="text-gray-900">{selectedCustomer.lastPurchase}</p>
+                    <p className="text-gray-900">{formatDate(selectedCustomer.lastPurchase)}</p>
                   </div>
                 </div>
 
                 <div className="border-t pt-4">
                   <h3 className="text-gray-800 mb-3">Purchase History</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between p-3 bg-gray-50 rounded">
-                      <span className="text-gray-700">2025-12-09</span>
-                      <span className="text-gray-900">Rs. 2,450</span>
+                  {ordersLoading ? (
+                    <p className="text-gray-500">Loading orders...</p>
+                  ) : customerOrders.length === 0 ? (
+                    <p className="text-gray-500">No orders placed yet.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {customerOrders.map((order) => (
+                        <div key={order._id} className="flex justify-between p-3 bg-gray-50 rounded">
+                          <div>
+                            <span className="text-gray-700 block">
+                              {formatDate(order.createdAt || order.date)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {order.orderNumber || order.id} · {order.status}
+                            </span>
+                          </div>
+                          <span className="text-gray-900">Rs. {order.total.toLocaleString()}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex justify-between p-3 bg-gray-50 rounded">
-                      <span className="text-gray-700">2025-12-05</span>
-                      <span className="text-gray-900">Rs. 3,200</span>
-                    </div>
-                    <div className="flex justify-between p-3 bg-gray-50 rounded">
-                      <span className="text-gray-700">2025-12-01</span>
-                      <span className="text-gray-900">Rs. 1,890</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 justify-end mt-6">

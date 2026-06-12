@@ -20,7 +20,11 @@ interface ValidationErrors {
   general?: string;
 }
 
-export default function CustomerRegister() {
+interface CustomerRegisterProps {
+  onLogin?: (role: 'customer') => void;
+}
+
+export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
   const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
@@ -160,7 +164,7 @@ export default function CustomerRegister() {
           console.error('Error ensuring customer cart on register:', cartError);
         }
         
-        // Redirect to home page
+        onLogin?.('customer');
         navigate('/');
       } else {
         setErrors({ general: data.message || 'Registration failed' });

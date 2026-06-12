@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail, Phone, MapPin, Clock, Send, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
+import { actionButtonClass } from '../../lib/actionButton';
 
 const contactInfo = [
   {
@@ -90,7 +91,7 @@ export default function ContactUsPage() {
       {/* Header */}
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4">
-          <Link to="/" className="flex items-center gap-2 text-green-700 hover:text-green-800">
+          <Link to="/" className={`inline-flex items-center gap-2 ${actionButtonClass}`}>
             <ArrowLeft className="w-5 h-5" />
             <span>Back to Home</span>
           </Link>

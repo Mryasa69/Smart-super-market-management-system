@@ -1,19 +1,16 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, Navigate } from "react-router-dom";
-import { ArrowLeft, User, Heart, Award, ShoppingCart as CartIcon } from "lucide-react";
+import { User, Heart, Award } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { actionButtonClass } from "../../lib/actionButton";
+import { apiService } from "../../services/api";
 
 export default function ProfileEdit() {
   const navigate = useNavigate();
-  const isAuthenticated = localStorage.getItem("user") || localStorage.getItem("customer");
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -23,6 +20,9 @@ export default function ProfileEdit() {
     nicNumber: "",
   });
 
+  const isAuthenticated =
+    apiService.isCustomerAuthenticated() || Boolean(localStorage.getItem("user"));
+
   useEffect(() => {
     const employee = localStorage.getItem("user");
     const customer = localStorage.getItem("customer");
@@ -30,13 +30,13 @@ export default function ProfileEdit() {
 
     const employeeObj = employee ? JSON.parse(employee) : null;
     const customerObj = customer ? JSON.parse(customer) : null;
-    
+
     let baseName = "";
     let baseEmail = "";
     let basePhone = "";
 
     if (employeeObj) {
-      baseName = `${employeeObj.firstName || ''} ${employeeObj.lastName || ''}`.trim();
+      baseName = `${employeeObj.firstName || ""} ${employeeObj.lastName || ""}`.trim();
       baseEmail = employeeObj.email || "";
       basePhone = employeeObj.phone || "";
     } else if (customerObj) {
@@ -62,14 +62,16 @@ export default function ProfileEdit() {
     });
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const name = `${formData.firstName} ${formData.lastName}`.trim();
     const existingProfile = JSON.parse(localStorage.getItem("customerProfile") || "{}");
     const nextProfile = {
@@ -77,9 +79,30 @@ export default function ProfileEdit() {
       name,
       email: formData.email,
       phone: formData.phone,
-      address: formData.address,
+      address: formData.address.trim(),
       nicNumber: formData.nicNumber,
     };
+    
+    // First, persist to API if logged in as customer
+    if (localStorage.getItem("customerToken")) {
+      try {
+        const res = await apiService.updateProfile(nextProfile);
+        if (res.success && res.data) {
+          // Merge API authoritative response with local storage
+          Object.assign(nextProfile, {
+            name: res.data.name,
+            email: res.data.email,
+            phone: res.data.phone,
+            address: res.data.address,
+            nicNumber: res.data.nicNumber,
+            points: res.data.loyaltyPoints
+          });
+        }
+      } catch (err) {
+        console.error("Failed to update profile to API", err);
+      }
+    }
+
     localStorage.setItem("customerProfile", JSON.stringify(nextProfile));
 
     const customer = localStorage.getItem("customer");
@@ -89,9 +112,10 @@ export default function ProfileEdit() {
         "customer",
         JSON.stringify({
           ...customerObj,
-          name,
-          email: formData.email,
-          phone: formData.phone,
+          name: nextProfile.name,
+          email: nextProfile.email,
+          phone: nextProfile.phone,
+          loyaltyPoints: nextProfile.points || customerObj.loyaltyPoints
         })
       );
     }
@@ -118,37 +142,33 @@ export default function ProfileEdit() {
     navigate("/profile");
   };
 
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
   const orderCount = JSON.parse(localStorage.getItem("customerOrders") || "[]").length;
   const loyaltyPoints = JSON.parse(localStorage.getItem("customer") || "{}")?.loyaltyPoints || 0;
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-6">
       <div className="flex items-center justify-between mb-6">
-        {/* Left: Continue Shopping */}
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-green-600"
+          className={`flex items-center gap-2 ${actionButtonClass}`}
         >
           ← Continue Shopping
         </button>
 
-        {/* Center: Shopping Cart */}
         <button
           onClick={() => navigate("/cart")}
-          className="flex items-center gap-2 text-green-600"
+          className={`flex items-center gap-2 ${actionButtonClass}`}
         >
           🛒 Shopping Cart
         </button>
 
-
-        <div className="flex items-center gap-4">
-          <Link to="/cart"  className="flex items-center gap-2 text-green-600">
-            Cart
-          </Link>
-          <Link to="/orders"  className="flex items-center gap-2 text-green-600">
-            Orders
-          </Link>
-        </div>
+        <Link to="/orders" className={`flex items-center gap-2 ${actionButtonClass}`}>
+          Orders
+        </Link>
       </div>
       <Card className="bg-green-600 text-white p-6 rounded-2xl mb-6">
         <div className="flex items-center gap-4 mb-4">
@@ -173,16 +193,22 @@ export default function ProfileEdit() {
       <div className="bg-white border rounded-xl p-1 mb-6 flex">
         <Link
           to="/profile"
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white"
+          className={`flex-1 flex items-center justify-center gap-2 ${actionButtonClass}`}
         >
           <User className="w-4 h-4" />
           Profile Details
         </Link>
-        <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg">
+        <button
+          onClick={() => navigate("/profile", { state: { tab: "wishlist" } })}
+          className={`flex-1 flex items-center justify-center gap-2 ${actionButtonClass}`}
+        >
           <Heart className="w-4 h-4" />
           Wishlist
         </button>
-        <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg">
+        <button
+          onClick={() => navigate("/profile", { state: { tab: "loyalty" } })}
+          className={`flex-1 flex items-center justify-center gap-2 ${actionButtonClass}`}
+        >
           <Award className="w-4 h-4" />
           LoyaltyPoints
         </button>
@@ -191,7 +217,7 @@ export default function ProfileEdit() {
       <Card className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg">Personal Information</h3>
-          <Button variant="outline"  className="text-green-600 border-green-600 hover:bg-green-50" onClick={handleCancel}>
+          <Button className={actionButtonClass} onClick={handleCancel}>
             Cancel
           </Button>
         </div>
@@ -246,11 +272,13 @@ export default function ProfileEdit() {
 
           <div>
             <Label htmlFor="address">Address</Label>
-            <Input
+            <Textarea
               id="address"
               name="address"
               value={formData.address}
               onChange={handleChange}
+              placeholder="Enter your delivery address"
+              rows={3}
               className="mt-1"
             />
           </div>
@@ -267,13 +295,10 @@ export default function ProfileEdit() {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <Button
-              onClick={handleSave}
-              className="bg-green-600 hover:bg-green-700"
-            >
+            <Button onClick={handleSave} className={actionButtonClass}>
               Save Changes
             </Button>
-            <Button variant="outline" onClick={handleCancel}>
+            <Button onClick={handleCancel} className={actionButtonClass}>
               Cancel
             </Button>
           </div>

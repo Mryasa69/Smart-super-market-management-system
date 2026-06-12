@@ -202,6 +202,9 @@ exports.verifyStripeOrder = async (req, res) => {
           customer.loyaltyPoints = (customer.loyaltyPoints || 0) + pointsEarned;
           customer.totalPurchases = (customer.totalPurchases || 0) + order.total;
           customer.lastPurchase = new Date();
+          if (order.contactPhone?.trim()) {
+            customer.phone = order.contactPhone.trim();
+          }
           await customer.save();
         }
       }
@@ -313,6 +316,9 @@ exports.createOrder = async (req, res) => {
       customer.loyaltyPoints = (customer.loyaltyPoints || 0) + pointsEarned;
       customer.totalPurchases = (customer.totalPurchases || 0) + total;
       customer.lastPurchase = new Date();
+      if (contactPhone?.trim()) {
+        customer.phone = contactPhone.trim();
+      }
       await customer.save();
     }
 

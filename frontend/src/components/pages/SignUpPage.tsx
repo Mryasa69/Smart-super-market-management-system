@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard } from 'lucide-react';
+import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard, Phone } from 'lucide-react';
 import { GoogleAuthSection } from '../auth/GoogleAuthSection';
+import { apiService } from '../../services/api';
 
 interface SignUpPageProps {
   onLogin: (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => void;
@@ -13,6 +14,7 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     nic: '',
@@ -59,6 +61,10 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
       newErrors.email = 'Email is invalid';
     }
 
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    }
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else {
@@ -90,29 +96,23 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          password: formData.password,
-          nic: formData.nic,
-        }),
+      const response = await apiService.customerRegister({
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        nicNumber: formData.nic,
       });
 
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        alert('Registration successful! Please login with your credentials.');
-        navigate('/login');
+      if (response.success && response.data) {
+        const { token, customer } = response.data;
+        // Auto-login: store credentials exactly like CustomerLogin does
+        apiService.saveCustomerAuthData(token, customer);
+        onLogin('customer');
+        navigate('/customer-dashboard');
       } else {
         const apiError =
-          data.message ||
-          (Array.isArray(data.errors) && data.errors.length > 0 ? data.errors[0].msg : '') ||
+          response.message ||
           'Registration failed';
         setErrors((prev) => ({ ...prev, general: apiError }));
       }
@@ -286,6 +286,30 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
                 )}
               </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label htmlFor="phone" className="block text-gray-700 mb-2">
+                Phone Number <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="tel"
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="Enter phone number"
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                    errors.phone ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  required
+                />
+              </div>
+              {errors.phone && (
+                <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              )}
             </div>
 
             {/* NIC (Optional) */}

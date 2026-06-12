@@ -77,6 +77,8 @@ exports.register = async (req, res) => {
       email,
       phone,
       password, // Will be hashed by pre-save hook
+      nicNumber: req.body.nicNumber || '',
+      address: req.body.address || '',
     });
 
     // Generate JWT token
