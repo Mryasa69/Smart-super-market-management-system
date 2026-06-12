@@ -6,7 +6,12 @@ const {
   isStrongPassword,
   register,
   login,
-  getMe
+  registerCustomer,
+  getMe,
+  forgotPassword,
+  resetPassword,
+  sendAuthRegistrationOTP,
+  verifyAuthRegistrationOTP
 } = require('../controllers/authController');
 
 const strongPasswordValidation = body('password')
@@ -14,6 +19,23 @@ const strongPasswordValidation = body('password')
   .withMessage(
     'Password must be at least 8 characters and include uppercase, lowercase, number, and special character'
   );
+
+// @route   POST /api/auth/send-registration-otp
+router.post(
+  '/send-registration-otp',
+  [body('email').isEmail().withMessage('Please enter a valid email')],
+  sendAuthRegistrationOTP
+);
+
+// @route   POST /api/auth/verify-registration-otp
+router.post(
+  '/verify-registration-otp',
+  [
+    body('email').isEmail().withMessage('Please enter a valid email'),
+    body('otp').trim().notEmpty().withMessage('OTP is required'),
+  ],
+  verifyAuthRegistrationOTP
+);
 
 // @route   POST /api/auth/register
 router.post(
@@ -39,5 +61,24 @@ router.post(
 
 // @route   GET /api/auth/me
 router.get('/me', protect, getMe);
+
+// @route   POST /api/auth/forgot-password
+router.post(
+  '/forgot-password',
+  [
+    body('email').isEmail().withMessage('Please enter a valid email'),
+  ],
+  forgotPassword
+);
+
+// @route   POST /api/auth/reset-password
+router.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().withMessage('Token is required'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  resetPassword
+);
 
 module.exports = router;

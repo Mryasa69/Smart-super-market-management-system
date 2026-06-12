@@ -7,9 +7,22 @@ const {
   register,
   login,
   googleLogin,
+  sendRegistrationOTP,
+  verifyRegistrationOTP,
   getProfile,
   updateProfile
 } = require('../controllers/customerAuthController');
+
+// @route   POST /api/customer-auth/send-registration-otp
+router.post('/send-registration-otp', [
+  body('email').isEmail().withMessage('Please enter a valid email'),
+], sendRegistrationOTP);
+
+// @route   POST /api/customer-auth/verify-registration-otp
+router.post('/verify-registration-otp', [
+  body('email').isEmail().withMessage('Please enter a valid email'),
+  body('otp').trim().notEmpty().withMessage('OTP is required'),
+], verifyRegistrationOTP);
 
 // @route   POST /api/customer-auth/register
 router.post('/register', [

@@ -11,7 +11,7 @@ export default function Products() {
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
     const [addedToCart, setAddedToCart] = useState<number | null>(null);
-    const [cartCount, setCartCount] = useState(() => {
+    const [cartCount, setCartCount] = useState<number>(() => {
       const cart = JSON.parse(localStorage.getItem("cart") || "[]");
       return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
     });

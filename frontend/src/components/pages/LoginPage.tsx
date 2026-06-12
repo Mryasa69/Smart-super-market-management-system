@@ -141,9 +141,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
                 <input type="checkbox" className="w-4 h-4 text-green-600 rounded" />
                 <span className="text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-green-700 hover:text-green-800">
+              <Link to="/forgot-password" className="text-green-700 hover:text-green-800">
                 Forgot Password?
-              </a>
+              </Link>
             </div>
 
             <button

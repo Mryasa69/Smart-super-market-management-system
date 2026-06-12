@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, ShieldAlert } from 'lucide-react';
 import { apiService } from '../../services/api';
 
 interface FormData {
@@ -24,6 +24,7 @@ export default function CustomerLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
 
   const navigate = useNavigate();
 
@@ -96,6 +97,10 @@ export default function CustomerLogin() {
         
         // Redirect to home page
         navigate('/');
+      } else if ((data as any).requiresVerification) {
+        // Account exists but email not verified yet
+        setUnverifiedEmail((data as any).email || formData.email);
+        setErrors({});
       } else {
         setErrors({ general: data.message || 'Login failed' });
       }
@@ -123,6 +128,27 @@ export default function CustomerLogin() {
             {errors.general && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
                 {errors.general}
+              </div>
+            )}
+
+            {unverifiedEmail && (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12, padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <ShieldAlert size={20} color="#d97706" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: '#92400e', margin: '0 0 4px' }}>Email not verified</p>
+                    <p style={{ fontSize: 13, color: '#78350f', margin: '0 0 10px' }}>
+                      Please verify your email <strong>{unverifiedEmail}</strong> before logging in.
+                    </p>
+                    <button
+                      type="button"
+                      style={{ background: '#d97706', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                      onClick={() => navigate('/customer-register', { state: { step: 'verify', email: unverifiedEmail } })}
+                    >
+                      ✉️ Verify Email Now
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 

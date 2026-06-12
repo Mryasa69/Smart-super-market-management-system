@@ -72,6 +72,30 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    profilePicture: {
+      type: String,
+      default: '',
+    },
+    resetPasswordExpire: {
+      type: Date,
+      default: null,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationOTP: {
+      type: String,
+      default: null,
+    },
+    verificationOTPExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
