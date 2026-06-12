@@ -35,7 +35,7 @@ const GOOGLE_ICON = (
 );
 
 const buttonClassName =
-  'group flex w-full items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3.5 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-green-200 hover:bg-green-50/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-sm';
+  'w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 font-semibold';
 
 function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
   const navigate = useNavigate();
@@ -65,7 +65,7 @@ function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
           }
 
           onLogin('customer');
-          navigate('/customer-dashboard');
+          navigate('/');
         } else {
           onError(response.message || 'Google sign-in failed. Please try again.');
         }
@@ -92,7 +92,9 @@ function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
       disabled={isLoading}
       className={buttonClassName}
     >
-      {GOOGLE_ICON}
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm">
+        {GOOGLE_ICON}
+      </div>
       <span>{isLoading ? loadingLabel : label}</span>
     </button>
   );
@@ -111,7 +113,9 @@ function GoogleAuthPlaceholder({ mode, onError }: Pick<GoogleAuthSectionProps, '
       }
       className={buttonClassName}
     >
-      {GOOGLE_ICON}
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm">
+        {GOOGLE_ICON}
+      </div>
       <span>{label}</span>
     </button>
   );
@@ -127,7 +131,7 @@ export function GoogleAuthSection({ mode, onLogin, onError }: GoogleAuthSectionP
     <div className="space-y-3">
       <AuthDivider />
 
-      <div className="rounded-2xl border border-dashed border-green-100 bg-gradient-to-br from-green-50/80 via-white to-white p-4">
+      <div className="w-full">
         {isGoogleAuthConfigured ? (
           <GoogleAuthButton mode={mode} onLogin={onLogin} onError={onError} />
         ) : (

@@ -58,6 +58,18 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    profilePicture: {
+      type: String,
+      default: '',
+    },
+    resetPasswordExpire: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -7,7 +7,9 @@ const {
   register,
   login,
   registerCustomer,
-  getMe
+  getMe,
+  forgotPassword,
+  resetPassword
 } = require('../controllers/authController');
 
 const strongPasswordValidation = body('password')
@@ -53,5 +55,24 @@ router.post(
 
 // @route   GET /api/auth/me
 router.get('/me', protect, getMe);
+
+// @route   POST /api/auth/forgot-password
+router.post(
+  '/forgot-password',
+  [
+    body('email').isEmail().withMessage('Please enter a valid email'),
+  ],
+  forgotPassword
+);
+
+// @route   POST /api/auth/reset-password
+router.post(
+  '/reset-password',
+  [
+    body('token').notEmpty().withMessage('Token is required'),
+    body('password').notEmpty().withMessage('Password is required'),
+  ],
+  resetPassword
+);
 
 module.exports = router;
