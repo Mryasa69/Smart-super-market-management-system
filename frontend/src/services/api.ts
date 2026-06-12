@@ -489,6 +489,26 @@ const apiService = {
     const data = await parseJsonSafe(res);
     return data as ApiResponse<any>;
   },
+
+  async sendRegistrationOtp(email: string, name?: string): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/send-registration-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name }),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
+
+  async verifyRegistrationOtp(email: string, otp: string): Promise<ApiResponse<any>> {
+    const res = await fetch(`${API_BASE_URL}/api/customer-auth/verify-registration-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp }),
+    });
+    const data = await parseJsonSafe(res);
+    return data as ApiResponse<any>;
+  },
 };
 
 export { apiService };

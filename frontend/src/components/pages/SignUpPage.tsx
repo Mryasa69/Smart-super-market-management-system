@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard } from 'lucide-react';
+import { ShoppingCart, User, Mail, Lock, Eye, EyeOff, IdCard, ShieldCheck, RefreshCw, Send, Check } from 'lucide-react';
 import { GoogleAuthSection } from '../auth/GoogleAuthSection';
 
 interface SignUpPageProps {
@@ -22,6 +22,124 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // OTP flow states
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [otpError, setOtpError] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendCountdown, setResendCountdown] = useState(0);
+
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setTimeout(() => setResendCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendCountdown]);
+
+  /* ── OTP handlers ── */
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const updated = [...otp];
+    updated[index] = value.slice(-1);
+    setOtp(updated);
+    setOtpError('');
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(''));
+      otpRefs.current[5]?.focus();
+    }
+    e.preventDefault();
+  };
+
+  const handleSendOTP = async () => {
+    if (!validateForm()) return;
+    setIsLoading(true);
+    setErrors({});
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/send-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, firstName: formData.firstName })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOtpSent(true);
+        setResendCountdown(60);
+      } else {
+        setErrors({ general: data.message || 'Failed to send OTP' });
+      }
+    } catch {
+      setErrors({ general: 'Network error. Please try again.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    const code = otp.join('');
+    if (code.length < 6) {
+      setOtpError('Please enter all 6 digits');
+      return;
+    }
+    setIsVerifying(true);
+    setOtpError('');
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/verify-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp: code })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setOtpVerified(true);
+        setOtpSent(false);
+      } else {
+        setOtpError(data.message || 'Invalid or expired code');
+      }
+    } catch {
+      setOtpError('Network error. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendCountdown > 0) return;
+    setIsResending(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/send-registration-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, firstName: formData.firstName })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setResendCountdown(60);
+        setOtp(['', '', '', '', '', '']);
+        setOtpError('');
+        otpRefs.current[0]?.focus();
+      } else {
+        setOtpError(data.message || 'Could not resend code');
+      }
+    } catch {
+      setOtpError('Network error. Please try again.');
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   const validatePassword = (password: string) => {
     if (password.length < 8) {
@@ -209,16 +327,26 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
                   type="email"
                   id="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    setOtpSent(false);
+                    setOtpVerified(false);
+                    setOtp(['', '', '', '', '', '']);
+                  }}
                   placeholder="Enter your email"
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                  disabled={otpSent || otpVerified}
+                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:bg-gray-100 ${
                     errors.email ? 'border-red-500' : 'border-gray-300'
                   }`}
                   required
                 />
+                {otpVerified && <ShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-green-600" />}
               </div>
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+              )}
+              {otpVerified && (
+                <p className="text-green-600 text-sm mt-1 font-medium">Email verified successfully</p>
               )}
             </div>
 
@@ -331,14 +459,98 @@ export default function SignUpPage({ onLogin }: SignUpPageProps) {
               )}
             </div>
 
-            {/* Sign Up Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Signing Up...' : 'Sign Up'}
-            </button>
+            {/* Sign Up Actions */}
+            <div className="pt-2">
+              {!otpSent && !otpVerified && (
+                <button
+                  type="button"
+                  onClick={handleSendOTP}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg"
+                >
+                  {isLoading ? 'Sending OTP...' : <><Send className="w-5 h-5" /> Send OTP</>}
+                </button>
+              )}
+
+              {otpSent && !otpVerified && (
+                <div className="mt-4 mb-4 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
+                  <div className="flex flex-col items-center justify-center space-y-4 w-full">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <ShieldCheck className="w-6 h-6" />
+                      <h3 className="font-semibold text-lg">Verify your email</h3>
+                    </div>
+                    <p className="text-sm text-gray-600 text-center">
+                      We sent a 6-digit code to <br className="sm:hidden" />
+                      <span className="font-medium text-gray-800">{formData.email}</span>
+                    </p>
+
+                    <div className="flex gap-2 sm:gap-3 justify-center items-center w-full py-2" onPaste={handleOtpPaste}>
+                      {otp.map((digit, i) => (
+                        <input
+                          key={i}
+                          ref={el => { otpRefs.current[i] = el; }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={e => handleOtpChange(i, e.target.value)}
+                          onKeyDown={e => handleOtpKeyDown(i, e)}
+                          className={`w-9 h-11 sm:w-11 sm:h-12 text-center text-lg sm:text-xl font-bold rounded-lg border-2 focus:ring-4 focus:ring-green-500/20 focus:border-green-500 outline-none transition-all ${
+                            otpError ? 'border-red-400 bg-red-50 text-red-900' : digit ? 'border-green-500 bg-green-50 text-green-900' : 'border-gray-300'
+                          }`}
+                          autoFocus={i === 0}
+                        />
+                      ))}
+                    </div>
+
+                    {otpError && (
+                      <p className="text-red-500 text-sm text-center">{otpError}</p>
+                    )}
+
+                    <div className="w-full pt-2">
+                      <button
+                        type="button"
+                        onClick={handleVerifyOTP}
+                        disabled={isVerifying}
+                        className="w-full bg-green-600 text-white py-4 rounded-xl hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-bold text-xl shadow-lg"
+                      >
+                        {isVerifying ? 'Verifying...' : 'Okay'}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 pt-3 text-sm">
+                      <button
+                        type="button"
+                        onClick={handleResend}
+                        disabled={resendCountdown > 0 || isResending}
+                        className="flex items-center gap-1.5 font-medium text-green-700 hover:text-green-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${isResending ? 'animate-spin' : ''}`} />
+                        {isResending ? 'Sending...' : resendCountdown > 0 ? `Resend in ${resendCountdown}s` : 'Resend Code'}
+                      </button>
+                      <span className="hidden sm:inline text-gray-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setOtpSent(false)}
+                        className="text-gray-500 hover:text-gray-700 font-medium underline sm:no-underline"
+                      >
+                        Change Email
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {otpVerified && (
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium text-lg"
+                >
+                  {isLoading ? 'Signing Up...' : <><Check className="w-5 h-5" /> Sign Up</>}
+                </button>
+              )}
+            </div>
           </form>
 
           <GoogleAuthSection
