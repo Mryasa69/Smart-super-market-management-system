@@ -1,0 +1,26 @@
+{
+  "name": "smart-super-market-management-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "frontend": "cd frontend && npm run dev",
+    "backend": "cd backend && npm run dev",
+    "start": "concurrently --names FRONTEND,BACKEND \"npm run frontend\" \"npm run backend\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mryasa69/Smart-super-market-management-system.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Mryasa69/Smart-super-market-management-system/issues"
+  },
+  "homepage": "https://github.com/Mryasa69/Smart-super-market-management-system#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
