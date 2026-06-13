@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Package, CheckCircle, Clock } from "lucide-react";
-import { Card } from "../ui/card";
-import { Button } from "../ui/button";
+import { useNavigate } from "react-router-dom";
+import { Package, CheckCircle, Clock } from "lucide-react";
 import { apiService, CustomerOrder } from "../../services/api";
-import { actionButtonClass } from "../../lib/actionButton";
 
 export function OrderHistory() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [btnHover, setBtnHover] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
     const loadOrders = async () => {
@@ -48,9 +46,7 @@ export function OrderHistory() {
     const rawDate = order.date || order.createdAt;
     if (!rawDate) return "Recently";
     const parsedDate = new Date(rawDate);
-    if (Number.isNaN(parsedDate.getTime())) {
-      return String(rawDate);
-    }
+    if (Number.isNaN(parsedDate.getTime())) return String(rawDate);
     return parsedDate.toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
@@ -60,84 +56,279 @@ export function OrderHistory() {
 
   const orderId = (order: CustomerOrder) => order.id || order.orderNumber || order._id;
 
+  const handleHover = (id: string, isHovered: boolean) =>
+    setBtnHover((prev) => ({ ...prev, [id]: isHovered }));
+
+  /* ── shared styles mirroring Profile page ── */
+  const S = {
+    page: {
+      minHeight: "100vh",
+      background: "linear-gradient(135deg,#f0fdf4 0%,#ecfdf5 40%,#f0f9ff 100%)",
+      fontFamily: "'Inter',system-ui,sans-serif",
+    } as React.CSSProperties,
+    topbar: {
+      background: "#fff",
+      borderBottom: "1px solid #e5e7eb",
+      position: "sticky" as const,
+      top: 0,
+      zIndex: 100,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+    },
+    topbarInner: {
+      maxWidth: 780,
+      margin: "0 auto",
+      padding: "0 20px",
+      height: 56,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    backBtn: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      fontSize: 14,
+      fontWeight: 600,
+      color: "#374151",
+      cursor: "pointer",
+      background: "none",
+      border: "none",
+      padding: "6px 10px",
+      borderRadius: 8,
+      transition: "all 0.15s",
+    } as React.CSSProperties,
+    title: { fontSize: 15, fontWeight: 700, color: "#111827" },
+    navRight: { display: "flex", alignItems: "center", gap: 10 },
+    navPill: {
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      fontSize: 14,
+      fontWeight: 600,
+      color: "#374151",
+      cursor: "pointer",
+      background: "#f3f4f6",
+      border: "none",
+      padding: "6px 14px",
+      borderRadius: 20,
+      transition: "all 0.15s",
+    } as React.CSSProperties,
+    wrap: { maxWidth: 780, margin: "0 auto", padding: "28px 20px 60px" },
+
+    /* heading */
+    sectionTitle: { fontSize: 20, fontWeight: 800, color: "#111827", margin: "0 0 20px" },
+
+    /* order cards */
+    card: {
+      background: "#fff",
+      borderRadius: 24,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
+      border: "1px solid #f3f4f6",
+      overflow: "hidden",
+      marginBottom: 16,
+    },
+    cardBody: { padding: "24px 28px" },
+
+    statusPill: (isCompleted: boolean) =>
+      ({
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 12px",
+        borderRadius: 20,
+        fontSize: 12,
+        fontWeight: 700,
+        background: isCompleted ? "#d1fae5" : "#dbeafe",
+        color: isCompleted ? "#065f46" : "#1d4ed8",
+      } as React.CSSProperties),
+
+    detailBtn: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "8px 18px",
+      borderRadius: 12,
+      border: "none",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 700,
+      background: "linear-gradient(135deg,#16a34a,#059669)",
+      color: "#fff",
+      boxShadow: "0 4px 10px rgba(22,163,74,0.2)",
+      transition: "all 0.15s",
+    } as React.CSSProperties,
+
+    emptyWrap: {
+      background: "#fff",
+      borderRadius: 24,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.07)",
+      border: "1px solid #f3f4f6",
+      padding: "60px 20px",
+      textAlign: "center" as const,
+    },
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-6">
-      <div className="flex items-center justify-between mb-6 border-b pb-4">
-        <button
-          onClick={() => navigate("/")}
-          className={`flex items-center gap-2 ${actionButtonClass}`}
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Home
-        </button>
-        <div className="flex items-center gap-2">
-          <Package className="w-6 h-6" />
-          <h1 >My Orders</h1>
+    <div style={S.page}>
+      {/* ── top bar ── */}
+      <div style={S.topbar}>
+        <div style={S.topbarInner}>
+          <button
+            style={{ ...S.backBtn, background: btnHover["back"] ? "#f3f4f6" : "none" }}
+            onMouseEnter={() => handleHover("back", true)}
+            onMouseLeave={() => handleHover("back", false)}
+            onClick={() => navigate("/")}
+          >
+            ← Continue Shopping
+          </button>
+          <span style={S.title}>My Orders</span>
+          <div style={S.navRight}>
+            <button
+              style={{ ...S.navPill, background: btnHover["profile"] ? "#e5e7eb" : "#f3f4f6" }}
+              onMouseEnter={() => handleHover("profile", true)}
+              onMouseLeave={() => handleHover("profile", false)}
+              onClick={() => navigate("/profile")}
+            >
+              👤 Profile
+            </button>
+            <button
+              style={{ ...S.navPill, background: btnHover["cart"] ? "#e5e7eb" : "#f3f4f6" }}
+              onMouseEnter={() => handleHover("cart", true)}
+              onMouseLeave={() => handleHover("cart", false)}
+              onClick={() => navigate("/cart")}
+            >
+              🛒 Cart
+            </button>
+          </div>
         </div>
-        <Link to="/profile" className={actionButtonClass}>
-          My Profile
-        </Link>
       </div>
 
-      <h2 className="text-xl mb-6">Order History</h2>
+      {/* ── body ── */}
+      <div style={S.wrap}>
+        <p style={S.sectionTitle}>Order History</p>
 
-      {error && <p className="mb-4 text-sm text-amber-700">{error}</p>}
+        {error && (
+          <p style={{ fontSize: 13, color: "#92400e", marginBottom: 16 }}>{error}</p>
+        )}
 
-      {isLoading ? (
-        <div className="py-12 text-center text-gray-600">Loading orders...</div>
-      ) : orders.length === 0 ? (
-        <Card className="p-8 text-center text-gray-600">
-          No orders found yet. Place an order to see it here.
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <Card key={orderId(order)} className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg mb-1">Order {orderId(order)}</h3>
-                  <p className="text-sm text-gray-600">{formatOrderDate(order)}</p>
-                </div>
-                <div
-                  className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-                    order.status === "Completed"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-blue-700"
-                  }`}
-                >
-                  {order.status === "Completed" ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <Clock className="w-4 h-4" />
+        {isLoading ? (
+          <div style={{ textAlign: "center", padding: "60px 0", color: "#6b7280", fontSize: 15 }}>
+            Loading orders…
+          </div>
+        ) : orders.length === 0 ? (
+          <div style={S.emptyWrap}>
+            <div
+              style={{
+                display: "inline-flex",
+                background: "#f0fdf4",
+                borderRadius: "50%",
+                padding: 18,
+                marginBottom: 16,
+              }}
+            >
+              <Package size={36} color="#16a34a" />
+            </div>
+            <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1f2937", margin: "0 0 8px" }}>
+              No orders yet
+            </h3>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 auto 20px", maxWidth: 280 }}>
+              You haven't placed any orders yet. Start shopping to see your orders here!
+            </p>
+            <button
+              style={S.detailBtn}
+              onClick={() => navigate("/")}
+            >
+              Explore Store
+            </button>
+          </div>
+        ) : (
+          <div>
+            {orders.map((order) => (
+              <div key={orderId(order)} style={S.card}>
+                <div style={S.cardBody}>
+                  {/* header row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: 16,
+                    }}
+                  >
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 800,
+                          color: "#111827",
+                          margin: "0 0 4px",
+                        }}
+                      >
+                        Order {orderId(order)}
+                      </p>
+                      <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>
+                        {formatOrderDate(order)}
+                      </p>
+                    </div>
+                    <span style={S.statusPill(order.status === "Completed")}>
+                      {order.status === "Completed" ? (
+                        <CheckCircle size={13} />
+                      ) : (
+                        <Clock size={13} />
+                      )}
+                      {order.status}
+                    </span>
+                  </div>
+
+                  {/* product thumbnails */}
+                  {order.items && order.items.length > 0 && (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+                      {order.items.map((item, index) => (
+                        <img
+                          key={`${orderId(order)}-${index}`}
+                          src={item.image}
+                          alt={item.name}
+                          style={{
+                            width: 64,
+                            height: 64,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                          }}
+                        />
+                      ))}
+                    </div>
                   )}
-                  {order.status}
+
+                  {/* footer row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 2px" }}>
+                        {order.itemCount} item{order.itemCount !== 1 ? "s" : ""}
+                      </p>
+                      <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", margin: 0 }}>
+                        Total: Rs. {order.total.toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      style={S.detailBtn}
+                      onClick={() => navigate(`/orders/${orderId(order)}`)}
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex gap-2 mb-4 flex-wrap">
-                {order.items.map((item, index) => (
-                  <img
-                    key={`${orderId(order)}-${index}`}
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 object-cover rounded"
-                  />
-                ))}
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600">{order.itemCount} items</p>
-                  <p className="font-medium">Total: Rs. {order.total.toLocaleString()}</p>
-                </div>
-                <Link to={`/orders/${orderId(order)}`}>
-                  <Button className={actionButtonClass}>View Details</Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
