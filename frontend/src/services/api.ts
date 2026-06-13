@@ -214,6 +214,11 @@ const apiService = {
     localStorage.removeItem('customer');
     localStorage.removeItem('rememberCustomer');
     localStorage.removeItem('customerProfile');
+    // NOTE: 'cart' is intentionally NOT removed here so guest cart items
+    // are preserved and can be merged after login.
+  },
+
+  clearCart() {
     localStorage.removeItem('cart');
   },
 

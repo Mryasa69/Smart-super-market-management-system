@@ -35,16 +35,16 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
   });
 
   const [errors, setErrors] = useState<ValidationErrors>({});
-  
+
   // States for the UX flow
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  
+
   // OTP input states
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [otpError, setOtpError] = useState('');
-  
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +119,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     if (name === 'password') validatePassword(value);
-    
+
     // Reset OTP flow if email changes after verified/sent
     if (name === 'email') {
       setOtpSent(false);
@@ -160,7 +160,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
     if (!validateForm()) return;
     setIsLoading(true);
     setErrors({});
-    
+
     try {
       const res = await apiService.sendRegistrationOtp(formData.email, formData.name);
       if (res.success) {
@@ -206,6 +206,10 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
     if (!validateForm()) return;
     setIsLoading(true);
 
+    // ── Preserve guest cart BEFORE registration ────────────────────────────
+    const guestCartRaw = localStorage.getItem('cart');
+    const guestCart: any[] = guestCartRaw ? JSON.parse(guestCartRaw) : [];
+
     try {
       const response = await fetch('http://localhost:5000/api/customer-auth/register', {
         method: 'POST',
@@ -224,15 +228,32 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
         localStorage.setItem('customerToken', data.data.token);
         localStorage.setItem('customer', JSON.stringify(data.data.customer));
 
+        // ── Merge guest cart with the new account's DB cart ─────────────────
         try {
           const cartRes = await apiService.getCart();
-          if (cartRes.success && cartRes.data) {
-            localStorage.setItem('cart', JSON.stringify(cartRes.data.items || []));
+          const dbItems: any[] = (cartRes.success && cartRes.data?.items) ? cartRes.data.items : [];
+
+          const mergedMap = new Map<string, any>();
+          dbItems.forEach((item: any) => mergedMap.set(String(item.id), { ...item }));
+          guestCart.forEach((guestItem: any) => {
+            const key = String(guestItem.id);
+            if (mergedMap.has(key)) {
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, { ...existing, quantity: Math.max(existing.quantity, guestItem.quantity) });
+            } else {
+              mergedMap.set(key, { ...guestItem });
+            }
+          });
+
+          const mergedItems = Array.from(mergedMap.values());
+          localStorage.setItem('cart', JSON.stringify(mergedItems));
+          if (mergedItems.length > 0) {
+            await apiService.saveCart(mergedItems);
           }
         } catch (cartError) {
-          console.error('Error ensuring customer cart on register:', cartError);
+          console.error('Error merging cart on register:', cartError);
         }
-        
+
         onLogin?.('customer');
         navigate('/');
       } else {
@@ -339,7 +360,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
       marginTop: 8,
     } as React.CSSProperties),
     divider: { textAlign: 'center' as const, fontSize: 13, color: '#9ca3af', marginTop: 20 },
-    
+
     // OTP Box styles
     otpContainer: {
       background: '#f8fafc',
@@ -440,7 +461,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
                 {otpVerified && <ShieldCheck size={18} color="#16a34a" />}
               </div>
               {errors.email && <p style={S.errorMsg}>{errors.email}</p>}
-              {otpVerified && <p style={{fontSize: 12, color: '#16a34a', margin: '2px 0 0', fontWeight: 600}}>Email verified successfully</p>}
+              {otpVerified && <p style={{ fontSize: 12, color: '#16a34a', margin: '2px 0 0', fontWeight: 600 }}>Email verified successfully</p>}
             </div>
 
             {/* Phone */}
@@ -513,7 +534,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
               </div>
               {errors.confirmPassword && <p style={S.errorMsg}>{errors.confirmPassword}</p>}
             </div>
-            
+
             {/* Action Area based on OTP state */}
             <div style={{ marginTop: 24 }}>
               {!otpSent && !otpVerified && (
@@ -565,7 +586,7 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
                   >
                     {isVerifying ? 'Verifying…' : 'Okay'}
                   </button>
-                  
+
                   <div style={S.resendRow}>
                     <button
                       style={S.resendBtn(resendCountdown > 0 || isResending)}
@@ -580,10 +601,10 @@ export default function CustomerRegister({ onLogin }: CustomerRegisterProps) {
                         <><RefreshCw size={13} /> Resend Code</>
                       )}
                     </button>
-                    <span style={{color: '#cbd5e1'}}>|</span>
-                    <button 
+                    <span style={{ color: '#cbd5e1' }}>|</span>
+                    <button
                       onClick={() => setOtpSent(false)}
-                      style={{...S.resendBtn(false), color: '#64748b'}}
+                      style={{ ...S.resendBtn(false), color: '#64748b' }}
                     >
                       Change Details
                     </button>

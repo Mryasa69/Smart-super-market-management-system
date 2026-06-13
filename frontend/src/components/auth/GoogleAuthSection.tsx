@@ -49,19 +49,40 @@ function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
       onError('');
       setIsLoading(true);
       try {
+        // ── Preserve guest cart BEFORE wiping auth tokens ──────────────────
+        const guestCartRaw = localStorage.getItem('cart');
+        const guestCart: any[] = guestCartRaw ? JSON.parse(guestCartRaw) : [];
+
         apiService.clearAllAuth();
         const response = await apiService.customerGoogleLogin(tokenResponse.access_token);
 
         if (response.success && response.data?.token && response.data?.customer) {
           apiService.saveCustomerAuthData(response.data.token, response.data.customer);
 
+          // ── Merge guest cart with the user's saved DB cart ──────────────
           try {
             const cartRes = await apiService.getCart();
-            if (cartRes.success && cartRes.data) {
-              localStorage.setItem('cart', JSON.stringify(cartRes.data.items || []));
+            const dbItems: any[] = (cartRes.success && cartRes.data?.items) ? cartRes.data.items : [];
+
+            const mergedMap = new Map<string, any>();
+            dbItems.forEach((item: any) => mergedMap.set(String(item.id), { ...item }));
+            guestCart.forEach((guestItem: any) => {
+              const key = String(guestItem.id);
+              if (mergedMap.has(key)) {
+                const existing = mergedMap.get(key);
+                mergedMap.set(key, { ...existing, quantity: Math.max(existing.quantity, guestItem.quantity) });
+              } else {
+                mergedMap.set(key, { ...guestItem });
+              }
+            });
+
+            const mergedItems = Array.from(mergedMap.values());
+            localStorage.setItem('cart', JSON.stringify(mergedItems));
+            if (mergedItems.length > 0) {
+              await apiService.saveCart(mergedItems);
             }
           } catch (cartError) {
-            console.error('Error ensuring customer cart on google auth:', cartError);
+            console.error('Error merging cart on Google auth:', cartError);
           }
 
           onLogin('customer');
