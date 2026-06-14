@@ -19,7 +19,7 @@ export default function CustomerLogin() {
     email: '',
     password: ''
   });
-  
+
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -50,7 +50,7 @@ export default function CustomerLogin() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     // Clear error when user starts typing
     if (errors[name as keyof ValidationErrors]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -59,16 +59,20 @@ export default function CustomerLogin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear any existing sessions
+
+    // ── Preserve guest cart BEFORE wiping auth tokens ──────────────────────
+    const guestCartRaw = localStorage.getItem('cart');
+    const guestCart: any[] = guestCartRaw ? JSON.parse(guestCartRaw) : [];
+
+    // Clear any existing sessions (cart is intentionally kept by clearAllAuth)
     apiService.clearAllAuth();
-    
+
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const data = await apiService.customerLogin({
         email: formData.email,
@@ -79,22 +83,50 @@ export default function CustomerLogin() {
         // Store token in localStorage
         localStorage.setItem('customerToken', data.data.token);
         localStorage.setItem('customer', JSON.stringify(data.data.customer));
-        
-        // Fetch cart from database and store in localStorage
+
+        // ── Merge guest cart with the user's saved DB cart ──────────────────
         try {
           const cartRes = await apiService.getCart();
-          if (cartRes.success && cartRes.data) {
-            localStorage.setItem("cart", JSON.stringify(cartRes.data.items || []));
+          const dbItems: any[] = (cartRes.success && cartRes.data?.items) ? cartRes.data.items : [];
+
+          // Build a merged map: DB items first, then overlay / add guest items
+          const mergedMap = new Map<string, any>();
+          dbItems.forEach((item: any) => mergedMap.set(String(item.id), { ...item }));
+
+          guestCart.forEach((guestItem: any) => {
+            const key = String(guestItem.id);
+            if (mergedMap.has(key)) {
+              // Item exists in both – take the higher quantity
+              const existing = mergedMap.get(key);
+              mergedMap.set(key, {
+                ...existing,
+                quantity: Math.max(existing.quantity, guestItem.quantity),
+              });
+            } else {
+              // New item only present in the guest cart – add it
+              mergedMap.set(key, { ...guestItem });
+            }
+          });
+
+          const mergedItems = Array.from(mergedMap.values());
+
+          // Persist merged cart locally …
+          localStorage.setItem('cart', JSON.stringify(mergedItems));
+
+          // … and sync back to the DB so it survives future logins
+          if (mergedItems.length > 0) {
+            await apiService.saveCart(mergedItems);
           }
         } catch (err) {
-          console.error("Error fetching cart on login:", err);
+          console.error('Error merging cart on login:', err);
+          // Fall back: keep whatever was already in localStorage
         }
-        
+
         // Store remember preference
         if (rememberMe) {
           localStorage.setItem('rememberCustomer', 'true');
         }
-        
+
         // Redirect to home page
         navigate('/');
       } else if ((data as any).requiresVerification) {
@@ -168,9 +200,8 @@ export default function CustomerLogin() {
                   required
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`appearance-none block w-full pl-10 pr-3 py-2 border ${
-                    errors.email ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md placeholder-gray-500 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm`}
+                  className={`appearance-none block w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md placeholder-gray-500 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm`}
                   placeholder="you@example.com"
                 />
                 {errors.email && (
@@ -195,9 +226,8 @@ export default function CustomerLogin() {
                   required
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`appearance-none block w-full pl-10 pr-10 py-2 border ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  } rounded-md placeholder-gray-500 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm`}
+                  className={`appearance-none block w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'
+                    } rounded-md placeholder-gray-500 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm`}
                   placeholder="•••••••••"
                 />
                 <button
@@ -275,7 +305,7 @@ export default function CustomerLogin() {
               </Link>
             </div>
           </div>
-          
+
           <div className="pt-2">
             <Link to="/login" className="text-sm text-gray-500 hover:text-gray-700 underline">
               Staff Member? Login here
