@@ -1,6 +1,6 @@
 import { useState,useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, ShoppingCart, User,Heart,ArrowLeft,SlidersHorizontal,} from "lucide-react";
+import { Search, ShoppingCart, User,Heart,ArrowLeft,SlidersHorizontal, Check } from "lucide-react";
 import { useNavigate,useLocation } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import { actionButtonClass } from '../../lib/actionButton';
@@ -108,9 +108,8 @@ useEffect(() => {
   };
 
 
-  // 🛒 ADD TO CART (LOCALSTORAGE VERSION)
+  // 🛒 ADD TO CART
   const handleAddToCart = async (product: any) => {
-  setCartCount(prev => prev + 1);
   setAddedToCart(product.id);
 
   // ✅ Get existing cart
@@ -118,7 +117,6 @@ useEffect(() => {
 
   // ✅ Check if item already exists
   const itemIndex = existingCart.findIndex((item: any) => item.id === product.id);
-
 
   if (itemIndex !== -1) {
     // already in cart → increase quantity
@@ -138,6 +136,10 @@ useEffect(() => {
   // ✅ Save to localStorage
   localStorage.setItem("cart", JSON.stringify(existingCart));
 
+  // ✅ Recount from updated cart for accuracy
+  const newTotal = existingCart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+  setCartCount(newTotal);
+
   // ✅ Sync with MongoDB database if customer is logged in
   const authToken = apiService.getStoredToken();
   if (authToken) {
@@ -152,7 +154,6 @@ useEffect(() => {
     }
   }
 
-  // UI effects (same as yours)
   setTimeout(() => setAddedToCart(null), 2000);
 };
 
@@ -392,10 +393,28 @@ const sortedProducts = [...filteredProducts].sort((a, b) => {
                     {/* Button */}
                     <button
                       onClick={() => handleAddToCart(product)}
-                      disabled={!product.inStock}
-                      className="w-full bg-green-700 text-white py-2 rounded-lg hover:bg-green-800 disabled:bg-gray-300"
+                      disabled={!product.inStock || addedToCart === product.id}
+                      className={`w-full text-white py-2 rounded-lg transition-all font-medium ${
+                        !product.inStock
+                          ? 'bg-gray-300 cursor-not-allowed'
+                          : addedToCart === product.id
+                          ? 'bg-green-800'
+                          : 'bg-green-700 hover:bg-green-800 hover:scale-105'
+                      }`}
                     >
-                      {product.inStock ? "Add to Cart" : "Out of Stock"}
+                      {!product.inStock ? (
+                        'Out of Stock'
+                      ) : addedToCart === product.id ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Check className="w-4 h-4" />
+                          Added!
+                        </span>
+                      ) : (
+                        <span className="flex items-center justify-center gap-2">
+                          <ShoppingCart className="w-4 h-4" />
+                          Add to Cart
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>

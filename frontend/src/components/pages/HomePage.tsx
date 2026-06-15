@@ -230,7 +230,6 @@ export default function HomePage() {
     productPrice: any,
     productImage: string
   ) => {
-    setCartCount((prev: number) => prev + 1);
     setAddedToCart(productId);
 
     // ✅ Get existing cart
@@ -260,6 +259,10 @@ export default function HomePage() {
 
     // ✅ Save to localStorage
     localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    // ✅ Recount from updated cart for accuracy
+    const newTotal = existingCart.reduce((sum: number, item: any) => sum + item.quantity, 0);
+    setCartCount(newTotal);
 
     // ✅ Sync with MongoDB database if customer is logged in
     const authToken = apiService.getStoredToken();
