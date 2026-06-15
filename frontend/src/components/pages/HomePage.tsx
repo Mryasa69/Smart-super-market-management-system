@@ -105,12 +105,11 @@ export default function HomePage() {
     loadCart();
   }, []);
 
-  const normalizedQuery = searchQuery.toLowerCase();
   const featuredList = realProducts.filter(
-    (p) => !!p?.specialOffers && (p?.name ?? '').toLowerCase().includes(normalizedQuery)
+    (p) => !!p?.specialOffers
   );
   const weeklyList = realProducts.filter(
-    (p) => !!p?.weeklyDeals && (p?.name ?? '').toLowerCase().includes(normalizedQuery)
+    (p) => !!p?.weeklyDeals
   );
 
   // Countdown timer for weekly deals
@@ -326,9 +325,21 @@ export default function HomePage() {
                   placeholder="Search for products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && searchQuery.trim()) {
+                      navigate('/products', { state: { search: searchQuery.trim() } });
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-full pr-12 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-700 text-white p-2 rounded-full hover:bg-green-800">
+                <button
+                  onClick={() => {
+                    if (searchQuery.trim()) {
+                      navigate('/products', { state: { search: searchQuery.trim() } });
+                    }
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-green-700 text-white p-2 rounded-full hover:bg-green-800"
+                >
                   <Search className="w-5 h-5" />
                 </button>
               </div>
@@ -521,9 +532,7 @@ export default function HomePage() {
       {/* Featured Products */}
       <section id="offers" className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <h2 className="text-gray-800 mb-8 text-center">
-            {searchQuery ? `Search Results for "${searchQuery}"` : 'Special Offers'}
-          </h2>
+          <h2 className="text-gray-800 mb-8 text-center">Special Offers</h2>
           {isLoadingProducts ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
@@ -559,11 +568,7 @@ export default function HomePage() {
               ))}
             </div>
           )}
-          {searchQuery && featuredList.length === 0 && !isLoadingProducts && (
-            <div className="text-center py-10">
-              <p className="text-gray-500 italic">No special offers found matching your search.</p>
-            </div>
-          )}
+
           {!searchQuery && featuredList.length === 0 && !isLoadingProducts && (
             <div className="text-center py-10 bg-white rounded-lg border-2 border-dashed border-gray-200">
               <p className="text-gray-400">No products are currently marked as Special Offers.</p>
@@ -626,31 +631,11 @@ export default function HomePage() {
               ))}
             </div>
           )}
-          {searchQuery && weeklyList.length === 0 && !isLoadingProducts && (
-            <div className="text-center py-10">
-              <p className="text-gray-500 italic">No weekly deals found matching your search.</p>
-            </div>
-          )}
-          {!searchQuery && weeklyList.length === 0 && !isLoadingProducts && (
+          {weeklyList.length === 0 && !isLoadingProducts && (
             <div className="text-center py-10 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
               <p className="text-gray-400">No products are currently marked as Weekly Deals.</p>
             </div>
           )}
-          {searchQuery &&
-            featuredList.length === 0 &&
-            weeklyList.length === 0 && !isLoadingProducts && (
-              <div className="bg-green-50 rounded-xl p-8 text-center max-w-lg mx-auto">
-                <Search className="w-12 h-12 text-green-300 mx-auto mb-4" />
-                <h3 className="text-gray-800">No products found</h3>
-                <p className="text-gray-600">Try searching for something else like "Apples" or "Milk".</p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="mt-4 text-green-700 font-bold hover:underline"
-                >
-                  Clear Search
-                </button>
-              </div>
-            )}
         </div>
       </section>
 

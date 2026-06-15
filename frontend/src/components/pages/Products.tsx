@@ -6,8 +6,11 @@ import { apiService } from '../../services/api';
 import { actionButtonClass } from '../../lib/actionButton';
 
 export default function Products() {
+    const navigate = useNavigate();
+    const location = useLocation();
+
   const [wishlist, setWishlist] = useState<number[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [searchQuery, setSearchQuery] = useState(location.state?.search || "");
   const [sortBy, setSortBy] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
     const [addedToCart, setAddedToCart] = useState<number | null>(null);
@@ -15,8 +18,6 @@ export default function Products() {
       const cart = JSON.parse(localStorage.getItem("cart") || "[]");
       return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
     });
-    const navigate = useNavigate();
-    const location = useLocation();
 
     console.log(location.state);
 
@@ -27,6 +28,13 @@ export default function Products() {
 useEffect(() => {
   if (location.state?.category) {
     setSelectedCategory(location.state.category);
+  }
+}, [location.state]);
+
+useEffect(() => {
+  if (location.state?.search) {
+    setSearchQuery(location.state.search);
+    setSelectedCategory('All Products');
   }
 }, [location.state]);
 
