@@ -706,7 +706,7 @@ export default function HomePage() {
               <ul className="space-y-2 text-gray-400">
                 <li><Link to="/contact" className="hover:text-white">Contact Us</Link></li>
                 <li><Link to="/about" className="hover:text-white">About Us</Link></li>
-                <li><a href="#" className="hover:text-white">Return Policy</a></li>
+                <li><Link to="/return-policy" className="hover:text-white">Return Policy</Link></li>
                 <li><Link to="/login" className="hover:text-white">Staff Login</Link></li>
               </ul>
             </div>

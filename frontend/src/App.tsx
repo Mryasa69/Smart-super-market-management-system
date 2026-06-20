@@ -28,6 +28,7 @@ import Products from "./components/pages/Products";
 import ServicesPage from "./components/pages/ServicesPage";
 import ForgotPasswordPage from "./components/pages/ForgotPasswordPage";
 import ResetPasswordPage from "./components/pages/ResetPasswordPage";
+import ReturnPolicy from "./components/pages/ReturnPolicy";
 
 
 
@@ -98,6 +99,7 @@ function App() {
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/return-policy" element={<ReturnPolicy />} />
 
         {/* Protected pages */}
         <Route path="/dashboard" element={
