@@ -1045,12 +1045,12 @@ const apiService = {
    * `saveCustomerAuthData()`.
    */
   async customerGoogleLogin(
-    payload: { idToken: string } | string
+    payload: { accessToken: string } | string
   ): Promise<ApiResponse<{ token: string; customer: any }>> {
-    const body = typeof payload === "string" ? { idToken: payload } : payload;
+    const body = typeof payload === "string" ? { accessToken: payload } : payload;
     return axios
       .post(
-        `${API_BASE_URL}/api/customer-auth/google`,
+        `${API_BASE_URL}/api/customer-auth/google-login`,
         body,
         { headers: { "Content-Type": "application/json" } }
       )
