@@ -26,24 +26,37 @@ export interface Customer {
   _id: string;
   firstName: string;
   lastName: string;
+  name?: string;
   email: string;
   phone?: string;
+  address?: string;
+  totalOrders?: number;
+  totalSpent?: number;
+  lastOrderDate?: string;
+  nicNumber?: string;
   role?: string;
   isActive?: boolean;
   createdAt?: string;
+  [key: string]: any;
 }
 
 export interface Employee {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   phone?: string;
   role: string;
   position?: string;
+  department?: string;
   salary?: number;
+  joinDate?: string;
+  status?: string;
+  lastLogin?: string;
   isActive?: boolean;
   createdAt?: string;
+  [key: string]: any;
 }
 
 export type EmployeeCreatePayload = Partial<Employee> & { password?: string };
@@ -55,8 +68,15 @@ export interface Supplier {
   email?: string;
   phone?: string;
   address?: string;
+  category?: string;
+  status?: string;
+  rating?: number;
+  totalOrders?: number;
+  activeOrders?: number;
+  lastDelivery?: string;
   isActive?: boolean;
   createdAt?: string;
+  [key: string]: any;
 }
 
 export interface Product {
@@ -70,19 +90,32 @@ export interface Product {
   stock?: number;
   quantity?: number;
   lowStockThreshold?: number;
+  minStock?: number;
   expiryDate?: string;
   description?: string;
   imageUrl?: string;
+  image?: string;
   supplier?: string | Supplier;
+  specialOffers?: any;
+  weeklyDeals?: any;
+  status?: string;
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: any;
 }
 
+// PurchaseOrder exposes all fields the management pages may read off the
+// payload returned by the backend (`supplierId`, `orderDate`, etc.). They
+// are marked optional so the type accepts the variations the server can
+// produce.
 export interface PurchaseOrder {
   _id: string;
+  id?: string;
   orderNumber?: string;
-  supplier: string | Supplier;
+  supplier: string | Supplier | { _id: string; name?: string };
+  supplierId?: string | { _id: string; name?: string };
+  supplierName?: string;
   items: Array<{
     product: string | Product;
     quantity: number;
@@ -90,11 +123,14 @@ export interface PurchaseOrder {
   }>;
   totalAmount: number;
   status: "pending" | "approved" | "received" | "cancelled";
+  orderDate?: string;
+  expectedDelivery?: string;
   expectedDate?: string;
   receivedDate?: string;
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  [key: string]: any;
 }
 
 export interface CustomerOrderItem {
@@ -103,10 +139,12 @@ export interface CustomerOrderItem {
   price: number;
   quantity: number;
   imageUrl?: string;
+  image?: string;
 }
 
 export interface CustomerOrder {
   _id: string;
+  id?: string;
   orderNumber?: string;
   customer?: string | { _id: string; firstName: string; lastName: string; email: string };
   items: CustomerOrderItem[];
@@ -120,21 +158,36 @@ export interface CustomerOrder {
   deliveryAddress: string;
   contactPhone: string;
   notes?: string;
+  date?: string;
   createdAt?: string;
   updatedAt?: string;
+  itemCount?: number;
+  [key: string]: any;
 }
 
+// CustomerRecord extends a flexible indexable shape so that fields
+// commonly populated by the backend (e.g. `name`, `tier`, `loyaltyPoints`,
+// `joinDate`, `totalPurchases`, `lastPurchase`, etc.) can be read without
+// TypeScript flagging the lookup as missing.
 export interface CustomerRecord {
   _id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  name?: string;
   email: string;
   phone?: string;
   address?: string;
   totalOrders?: number;
   totalSpent?: number;
+  loyaltyPoints?: number;
+  tier?: "bronze" | "silver" | "gold" | "platinum" | string;
+  joinDate?: string;
+  totalPurchases?: number;
+  lastPurchase?: string;
   isActive?: boolean;
   createdAt?: string;
+  status?: string;
+  [key: string]: any;
 }
 
 export interface StripeConfig {

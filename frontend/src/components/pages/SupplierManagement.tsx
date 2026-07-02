@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
-import { Search, Plus, Edit, Trash2, Truck, Phone, Mail, ShoppingCart, Calendar, DollarSign, FileText, Star, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Truck, Phone, Mail, FileText, Star, XCircle } from 'lucide-react';
 import { apiService, Supplier, PurchaseOrder } from '../../services/api';
 
 interface SupplierManagementProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
-  onLogout: () => void;
+  userRole?: 'admin' | 'cashier' | 'stock_manager' | null;
+  onLogout?: () => void;
 }
 
 export default function SupplierManagement({ userRole, onLogout }: SupplierManagementProps) {
@@ -19,7 +19,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [formData, setFormData] = useState({
     name: '',
     contactPerson: '',
@@ -55,10 +55,10 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
       ]);
 
       if (suppliersRes.success && suppliersRes.data) {
-        setSuppliers(suppliersRes.data);
+        setSuppliers(suppliersRes.data as any);
       }
       if (ordersRes.success && ordersRes.data) {
-        setPurchaseOrders(ordersRes.data);
+        setPurchaseOrders(ordersRes.data as any);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -70,7 +70,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       let response;
       if (editingSupplier) {
@@ -88,7 +88,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
           alert('Failed to add supplier: ' + response.message);
         }
       }
-      
+
       if (response.success) {
         handleModalClose();
         loadData();
@@ -103,25 +103,31 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
   const handleSavePO = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
+      const payload: any = {
+        ...poFormData,
+        items: [],
+        notes: poFormData.notes
+      };
+
       let response;
       if (editingPO) {
-        response = await apiService.updatePurchaseOrder(editingPO._id, poFormData);
+        response = await apiService.updatePurchaseOrder(editingPO._id, payload);
         if (response.success) {
           alert('Purchase order updated successfully!');
         } else {
           alert('Failed to update purchase order: ' + response.message);
         }
       } else {
-        response = await apiService.createPurchaseOrder(poFormData);
+        response = await apiService.createPurchaseOrder(payload);
         if (response.success) {
           alert('Purchase order created successfully!');
         } else {
           alert('Failed to create purchase order: ' + response.message);
         }
       }
-      
+
       if (response.success) {
         handlePOModalClose();
         loadData();
@@ -140,9 +146,9 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
 
   const handlePOInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setPoFormData(prev => ({ 
-      ...prev, 
-      [name]: name === 'items' || name === 'totalAmount' ? Number(value) : value 
+    setPoFormData(prev => ({
+      ...prev,
+      [name]: name === 'items' || name === 'totalAmount' ? Number(value) : value
     }));
   };
 
@@ -150,25 +156,42 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
     setEditingSupplier(supplier);
     setFormData({
       name: supplier.name,
-      contactPerson: supplier.contactPerson,
-      email: supplier.email,
-      phone: supplier.phone,
-      address: supplier.address,
-      category: supplier.category,
-      status: supplier.status
+      contactPerson: supplier.contactPerson || '',
+      email: supplier.email || '',
+      phone: supplier.phone || '',
+      address: supplier.address || '',
+      category: supplier.category || 'Dairy Products',
+      status: (supplier.status as 'active' | 'inactive') || 'active'
     });
     setShowAddModal(true);
+  };
+
+  const supplierIdToString = (id: PurchaseOrder['supplierId']): string => {
+    if (!id) return '';
+    if (typeof id === 'string') return id;
+    return id._id;
+  };
+
+  const supplierNameFrom = (order: PurchaseOrder): string => {
+    if (order.supplierName) return order.supplierName;
+    if (typeof order.supplier === 'object' && order.supplier !== null) {
+      return (order.supplier as any).name || 'Unknown';
+    }
+    if (order.supplierId && typeof order.supplierId === 'object') {
+      return (order.supplierId as any).name || 'Unknown';
+    }
+    return 'Unknown';
   };
 
   const handleEditPO = (po: PurchaseOrder) => {
     setEditingPO(po);
     setPoFormData({
-      supplierId: po.supplierId?._id || po.supplierId,
-      orderDate: new Date(po.orderDate).toISOString().split('T')[0],
-      expectedDelivery: new Date(po.expectedDelivery).toISOString().split('T')[0],
-      status: po.status as any,
-      items: po.items || 0,
-      totalAmount: po.totalAmount,
+      supplierId: supplierIdToString(po.supplierId),
+      orderDate: po.orderDate ? new Date(po.orderDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      expectedDelivery: po.expectedDelivery ? new Date(po.expectedDelivery).toISOString().split('T')[0] : '',
+      status: (po.status as any) || 'pending',
+      items: Array.isArray(po.items) ? po.items.length : 0,
+      totalAmount: po.totalAmount || 0,
       notes: po.notes || ''
     });
     setShowPOModal(true);
@@ -205,9 +228,11 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
   const categories = ['all', 'Dairy Products', 'Bakery', 'Vegetables & Fruits', 'Meat & Poultry', 'Grains & Rice', 'Beverages', 'Snacks & Sweets', 'Frozen Foods', 'Personal Care'];
 
   const filteredSuppliers = suppliers.filter((supplier) => {
-    const matchesSearch = supplier.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         supplier.contactPerson.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         supplier.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const name = (supplier.name || '').toLowerCase();
+    const contact = (supplier.contactPerson || '').toLowerCase();
+    const email = (supplier.email || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = name.includes(query) || contact.includes(query) || email.includes(query);
     const matchesCategory = filterCategory === 'all' || supplier.category === filterCategory;
     const matchesStatus = filterStatus === 'all' || supplier.status === filterStatus;
     return matchesSearch && matchesCategory && matchesStatus;
@@ -308,13 +333,13 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <p className="text-gray-500 text-sm font-medium">Active Orders</p>
-            <h2 className="text-2xl font-bold text-blue-600">{suppliers.reduce((sum, s) => sum + s.activeOrders, 0)}</h2>
+            <h2 className="text-2xl font-bold text-blue-600">{suppliers.reduce((sum, s) => sum + (s.activeOrders || 0), 0)}</h2>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
             <p className="text-gray-500 text-sm font-medium">Avg Rating</p>
             <div className="flex items-center gap-2">
               <h2 className="text-2xl font-bold text-gray-800">
-                {(suppliers.reduce((sum, s) => sum + s.rating, 0) / (suppliers.length || 1)).toFixed(1)}
+                {(suppliers.reduce((sum, s) => sum + (s.rating || 0), 0) / (suppliers.length || 1)).toFixed(1)}
               </h2>
               <Star className="w-5 h-5 text-yellow-400 fill-current" />
             </div>
@@ -378,35 +403,35 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                         <div>
                           <p className="text-gray-900 font-semibold">{supplier.name}</p>
                           <div className="flex flex-col text-xs text-gray-500">
-                            <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {supplier.phone}</span>
-                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {supplier.email}</span>
+                            <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {supplier.phone || '-'}</span>
+                            <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {supplier.email || '-'}</span>
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-700">{supplier.contactPerson}</td>
+                    <td className="px-6 py-4 text-gray-700">{supplier.contactPerson || '-'}</td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">
-                        {supplier.category}
+                        {supplier.category || 'N/A'}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1 text-gray-700">
-                        {supplier.rating} <Star className="w-3 h-3 text-yellow-400 fill-current" />
+                        {supplier.rating ?? 0} <Star className="w-3 h-3 text-yellow-400 fill-current" />
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-xs">
-                        <p className="text-gray-900">Total: {supplier.totalOrders}</p>
-                        <p className="text-blue-600">Active: {supplier.activeOrders}</p>
+                        <p className="text-gray-900">Total: {supplier.totalOrders ?? 0}</p>
+                        <p className="text-blue-600">Active: {supplier.activeOrders ?? 0}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-500">
                       {supplier.lastDelivery ? new Date(supplier.lastDelivery).toISOString().split('T')[0] : '-'}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${getStatusColor(supplier.status)}`}>
-                        {supplier.status.toUpperCase()}
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${getStatusColor(supplier.status || 'inactive')}`}>
+                        {(supplier.status || 'inactive').toUpperCase()}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
@@ -458,19 +483,19 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                       #{order._id.slice(-4).toUpperCase()}
                     </td>
                     <td className="px-6 py-4 text-gray-700">
-                      {order.supplierId?.name || 'Unknown'}
+                      {supplierNameFrom(order)}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {new Date(order.orderDate).toISOString().split('T')[0]}
+                      {order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : '-'}
                     </td>
                     <td className="px-6 py-4 text-gray-500">
-                      {new Date(order.expectedDelivery).toISOString().split('T')[0]}
+                      {order.expectedDelivery ? new Date(order.expectedDelivery).toISOString().split('T')[0] : '-'}
                     </td>
                     <td className="px-6 py-4 text-gray-700">
-                      {order.items} items
+                      {Array.isArray(order.items) ? order.items.length : 0} items
                     </td>
                     <td className="px-6 py-4 font-semibold text-gray-900">
-                      Rs. {order.totalAmount.toLocaleString()}
+                      Rs. {(order.totalAmount || 0).toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold ${getPOStatusColor(order.status)}`}>
@@ -489,7 +514,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                 ))}
                 {purchaseOrders.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                       No purchase orders found
                     </td>
                   </tr>
@@ -570,7 +595,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Category</label>
-                    <select 
+                    <select
                       name="category"
                       value={formData.category}
                       onChange={handleInputChange}
@@ -583,7 +608,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
-                    <select 
+                    <select
                       name="status"
                       value={formData.status}
                       onChange={handleInputChange}
@@ -631,7 +656,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Supplier</label>
-                    <select 
+                    <select
                       name="supplierId"
                       value={poFormData.supplierId}
                       onChange={handlePOInputChange}
@@ -647,7 +672,7 @@ export default function SupplierManagement({ userRole, onLogout }: SupplierManag
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
-                    <select 
+                    <select
                       name="status"
                       value={poFormData.status}
                       onChange={handlePOInputChange}

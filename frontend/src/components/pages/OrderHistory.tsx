@@ -270,8 +270,8 @@ export function OrderHistory() {
                         {formatOrderDate(order)}
                       </p>
                     </div>
-                    <span style={S.statusPill(order.status === "Completed")}>
-                      {order.status === "Completed" ? (
+                    <span style={S.statusPill(order.status === "delivered")}>
+                      {order.status === "delivered" ? (
                         <CheckCircle size={13} />
                       ) : (
                         <Clock size={13} />

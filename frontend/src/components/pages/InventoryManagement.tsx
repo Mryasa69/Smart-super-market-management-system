@@ -112,7 +112,7 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
       quantity: product.quantity,
       price: product.price,
       minStock: product.minStock,
-      supplier: product.supplier,
+      supplier: typeof product.supplier === 'string' ? product.supplier : (product.supplier && typeof product.supplier === 'object' ? product.supplier._id : ''),
       specialOffers: product.specialOffers || false,
       weeklyDeals: product.weeklyDeals || false,
       image: product.image || ''
@@ -302,7 +302,7 @@ export default function InventoryManagement({ userRole, onLogout }: InventoryMan
                       <span className="text-gray-500"> / {product.minStock}</span>
                     </td>
                     <td className="px-6 py-4 text-gray-900">Rs. {product.price}</td>
-                    <td className="px-6 py-4 text-gray-600">{product.supplier}</td>
+                    <td className="px-6 py-4 text-gray-600">{typeof product.supplier === 'string' ? product.supplier : (product.supplier && typeof product.supplier === 'object' ? product.supplier.name : '')}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(status)}`}>
                         {status.replace('-', ' ').toUpperCase()}

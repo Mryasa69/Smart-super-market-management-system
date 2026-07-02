@@ -108,12 +108,12 @@ export function OrderDetails() {
           </div>
           <div
             className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-              order.status === "Completed"
+              order.status === "delivered"
                 ? "bg-green-100 text-green-700"
                 : "bg-blue-100 text-blue-700"
             }`}
           >
-            {order.status === "Completed" ? (
+            {order.status === "delivered" ? (
               <CheckCircle className="w-4 h-4" />
             ) : (
               <Clock className="w-4 h-4" />
