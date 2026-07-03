@@ -791,6 +791,14 @@ const apiService = {
       .catch((err) => errorToApiResponse(err));
   },
 
+  /** Returns active weekly deals with server-computed serverNow + time-left fields. */
+  async getWeeklyDeals(): Promise<ApiResponse<any>> {
+    return axios
+      .get(`${API_BASE_URL}/api/products/weekly-deals`, { headers: privateHeaders() })
+      .then((res) => toApiResponse(res.data))
+      .catch((err) => errorToApiResponse(err));
+  },
+
   // -----------------------------------------------------------------------
   // Purchase orders
   // -----------------------------------------------------------------------

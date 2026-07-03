@@ -1,47 +1,56 @@
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
-const { protect, authorize } = require('../middleware/auth');
 const {
   getProducts,
-  getProductStats,
+  getWeeklyDeals,
   getProductById,
+  getProductStats,
   createProduct,
   updateProduct,
   deleteProduct,
-  cleanupWeeklyDeals
+  cleanupWeeklyDeals,
 } = require('../controllers/productController');
+const { protect, authorize } = require('../middleware/auth');
 
-// @route   GET /api/products
+// Validation rules
+const productValidation = [
+  body('name').trim().notEmpty().withMessage('Product name is required'),
+  body('category').notEmpty().withMessage('Category is required'),
+  body('sku').trim().notEmpty().withMessage('SKU is required'),
+  body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
+  body('quantity').optional().isInt({ min: 0 }).withMessage('Quantity must be a non-negative integer'),
+];
+
+// Public routes
+router.get('/weekly-deals', getWeeklyDeals);
 router.get('/', getProducts);
 
-// @route   GET /api/products/stats/overview
+// IMPORTANT: parameterized routes must come AFTER specific named routes,
+// otherwise '/stats/overview' and '/cleanup-weekly-deals' could be matched as ':id'.
 router.get('/stats/overview', protect, getProductStats);
-
-// @route   GET /api/products/:id
+router.post('/cleanup-weekly-deals', protect, cleanupWeeklyDeals);
 router.get('/:id', getProductById);
 
-// @route   POST /api/products
+// Protected routes
 router.post(
   '/',
   protect,
   authorize('admin', 'stock_manager'),
-  [
-    body('name').trim().notEmpty().withMessage('Product name is required'),
-    body('category').notEmpty().withMessage('Category is required'),
-    body('sku').trim().notEmpty().withMessage('SKU is required'),
-    body('price').isNumeric().withMessage('Price must be a number'),
-  ],
+  productValidation,
   createProduct
 );
-
-// @route   PUT /api/products/:id
-router.put('/:id', protect, authorize('admin', 'stock_manager'), updateProduct);
-
-// @route   DELETE /api/products/:id
-router.delete('/:id', protect, authorize('admin'), deleteProduct);
-
-// @route   POST /api/products/cleanup-weekly-deals
-router.post('/cleanup-weekly-deals', protect, cleanupWeeklyDeals);
+router.put(
+  '/:id',
+  protect,
+  authorize('admin', 'stock_manager'),
+  updateProduct
+);
+router.delete(
+  '/:id',
+  protect,
+  authorize('admin'),
+  deleteProduct
+);
 
 module.exports = router;
