@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, Twitter, Clock, Zap, Tag, Check, ChevronDown, LogOut } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import { TopBar } from '../ui/TopBar';
 
 const categories = [
   { name: 'Fruits & Vegetables', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop' },
@@ -50,31 +51,88 @@ export default function HomePage() {
     return cart.reduce((sum: number, item: any) => sum + item.quantity, 0);
   });
   const [addedToCart, setAddedToCart] = useState<any>(null);
-  const [timeLeft, setTimeLeft] = useState({
-    days: 3,
-    hours: 12,
-    minutes: 45,
-    seconds: 30
-  });
+  // Per-weekly-deal countdown map: { [productId]: { days, hours, minutes, seconds } }
+  const [weeklyDealsTimeLeft, setWeeklyDealsTimeLeft] = useState<Record<string, { days: number; hours: number; minutes: number; seconds: number }>>({});
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
   const [memberRole, setMemberRole] = useState<'customer' | 'admin' | 'cashier' | 'stock_manager' | null>(null);
   const [memberDisplayName, setMemberDisplayName] = useState('Guest User');
   const [memberEmail, setMemberEmail] = useState('');
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
+  // States & ref for scroll-responsive header behavior
+  const [showTopBar, setShowTopBar] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const lastScrollY = useRef(0);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+// Top bar height constant. The bar slides up/down via translateY, so the
+// header's offsetHeight never changes — we model the *visible* height here.
+const TOP_BAR_HEIGHT = 40;
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    // Need a small timeout to ensure DOM is fully painted
+    setTimeout(updateHeight, 100);
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // Re-measure the header height whenever the green top bar collapses/expands,
+  // so the spacer always tracks the *visible* header height (not the
+  // pre-toggle snapshot taken on mount).
+  useEffect(() => {
+    if (headerRef.current) {
+      // Defer to the next frame so the new height is already applied.
+      const id = requestAnimationFrame(() => {
+        if (headerRef.current) {
+          setHeaderHeight(headerRef.current.offsetHeight);
+        }
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [showTopBar]);
+
   const [realProducts, setRealProducts] = useState<any[]>([]);
+  const [weeklyDeals, setWeeklyDeals] = useState<any[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  // Tracks the moment we received the latest serverNow from the backend.
+  // All countdowns are derived from this so the client clock is irrelevant.
+  const [serverOffset, setServerOffset] = useState<number>(0);
+  // Tick value (not just setter) so depending on it actually triggers re-renders every second.
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         console.log("Fetching products...");
-        const res = await apiService.getProducts();
-        console.log("Products fetch response:", res);
-        if (res.success && res.data) {
-          setRealProducts(res.data);
+        const [productsRes, weeklyRes] = await Promise.all([
+          apiService.getProducts(),
+          // Use the dedicated endpoint so each weekly deal carries its
+          // server-computed serverNow + weeklyDealsTimeLeft values.
+          (apiService as any).getWeeklyDeals ? (apiService as any).getWeeklyDeals() : Promise.resolve(null),
+        ]);
+        console.log("Products fetch response:", productsRes);
+        if (productsRes.success && productsRes.data) {
+          setRealProducts(productsRes.data);
         } else {
-          console.warn("Product fetch failed or returned no data:", res.message);
+          console.warn("Product fetch failed or returned no data:", productsRes.message);
+        }
+
+        if (weeklyRes && weeklyRes.success && weeklyRes.serverNow) {
+          setServerOffset(new Date(weeklyRes.serverNow).getTime() - Date.now());
+          setWeeklyDeals(weeklyRes.data || []);
+        } else {
+          // Fallback: filter weekly deals from full product list
+          const fallback = (productsRes.data || []).filter((p: any) => !!p?.weeklyDeals);
+          setWeeklyDeals(fallback);
+          if (fallback[0]?.serverNow) {
+            setServerOffset(new Date(fallback[0].serverNow).getTime() - Date.now());
+          }
         }
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -108,41 +166,53 @@ export default function HomePage() {
   const featuredList = realProducts.filter(
     (p) => !!p?.specialOffers
   );
-  const weeklyList = realProducts.filter(
+  const weeklyList = useMemo(() => realProducts.filter(
     (p) => !!p?.weeklyDeals
-  );
+  ), [realProducts]);
 
-  // Countdown timer for weekly deals
+  // 1-second tick so all per-card countdowns refresh together
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        let { days, hours, minutes, seconds } = prev;
-
-        if (seconds > 0) {
-          seconds--;
-        } else {
-          seconds = 59;
-          if (minutes > 0) {
-            minutes--;
-          } else {
-            minutes = 59;
-            if (hours > 0) {
-              hours--;
-            } else {
-              hours = 23;
-              if (days > 0) {
-                days--;
-              }
-            }
-          }
-        }
-
-        return { days, hours, minutes, seconds };
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
   }, []);
+
+  // Scroll tracking for header shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Recompute per-card countdown values every second. Time math uses the
+  // server's clock via `serverOffset` so client clock skew can't desync the
+  // countdown. Depending on the `tick` value (not just the setter) is what
+  // makes this effect re-run on every second, producing a live countdown.
+  useEffect(() => {
+    if (!weeklyList || weeklyList.length === 0) {
+      setWeeklyDealsTimeLeft({});
+      return;
+    }
+    const now = Date.now() + serverOffset;
+    const next: Record<string, { days: number; hours: number; minutes: number; seconds: number }> = {};
+    weeklyList.forEach((deal: any) => {
+      const startedAt = deal?.weeklyDealsAddedAt || deal?.weeklyDealsStartedAt
+        ? new Date(deal.weeklyDealsAddedAt || deal.weeklyDealsStartedAt).getTime()
+        : null;
+      // 7 days = 604800000 ms
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const remainingMs = startedAt ? Math.max(0, SEVEN_DAYS_MS - (now - startedAt)) : 0;
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      next[deal._id] = { days, hours, minutes, seconds };
+    });
+    setWeeklyDealsTimeLeft(next);
+  }, [weeklyList, serverOffset, tick]);
   useEffect(() => {
     if (apiService.isCustomerAuthenticated()) {
       const customerObj = apiService.getStoredCustomer();
@@ -285,29 +355,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Spacer to prevent content jump when header is fixed.
+          The visible header height changes by TOP_BAR_HEIGHT when the green
+      {/* Spacer to prevent content jump when header is fixed. */}
+      <div style={{ height: headerHeight > 0 ? `${headerHeight}px` : 'auto' }} />
+
       {/* Header */}
-      <header className="border-b sticky top-0 bg-white z-50">
-        {/* Top Bar */}
-        <div className="bg-green-700 text-white py-2">
-          <div className="container mx-auto px-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                +94 11 234 5678
-              </span>
-              <span className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                info@smartsupermarket.lk
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                Store Locator
-              </span>
-            </div>
-          </div>
-        </div>
+      <header
+        ref={headerRef}
+        className={`fixed top-0 w-full left-0 right-0 bg-white z-50 transition-all duration-300 ease-in-out ${
+          isScrolled ? 'shadow-md border-b-0' : 'border-b border-gray-100'
+        }`}
+      >
+        <TopBar />
 
         {/* Main Header */}
         <div className="container mx-auto px-4 py-4">
@@ -628,7 +688,16 @@ export default function HomePage() {
                   </div>
                   <div className="bg-gray-100 text-center p-2 text-sm text-gray-700">
                     <Clock className="w-4 h-4 inline-block mr-1" />
-                    {timeLeft.days}d {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
+                    {(() => {
+                      const t = weeklyDealsTimeLeft[deal._id] || { days: 7, hours: 0, minutes: 0, seconds: 0 };
+                      // Pad to two digits for a clean, fixed-width display.
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      return (
+                        <span>
+                          {t.days}d {pad(t.hours)}h {pad(t.minutes)}m {pad(t.seconds)}s
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}

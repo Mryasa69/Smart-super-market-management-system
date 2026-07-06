@@ -86,7 +86,10 @@ function GoogleAuthButton({ mode, onLogin, onError }: GoogleAuthSectionProps) {
           }
 
           onLogin('customer');
-          navigate('/');
+          // Use `replace: true` so the login route is replaced in the
+          // history stack – the back button will no longer return the
+          // user to /login after a successful Google sign-in.
+          navigate('/', { replace: true });
         } else {
           onError(response.message || 'Google sign-in failed. Please try again.');
         }

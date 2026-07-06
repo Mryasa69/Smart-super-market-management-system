@@ -22,6 +22,7 @@
     "stripe": "^22.2.0"
   },
   "devDependencies": {
+    "@types/react-dom": "^19.2.3",
     "nodemon": "^3.1.7"
   }
 }

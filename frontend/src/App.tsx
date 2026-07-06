@@ -1,5 +1,5 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
 
 import HomePage from "./components/pages/HomePage";
 import LoginPage from "./components/pages/LoginPage";
@@ -33,29 +33,40 @@ import ReturnPolicy from "./components/pages/ReturnPolicy";
 
 
 function App() {
-  const [userRole, setUserRole] = useState<'admin' | 'cashier' | 'stock_manager' | 'customer' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Initialise lazily from localStorage so a hard refresh after Google login
+  // doesn't briefly land the user back on the login page while React mounts.
+  const [userRole, setUserRole] = useState<'admin' | 'cashier' | 'stock_manager' | 'customer' | null>(() => {
+    if (apiService.isCustomerAuthenticated()) return 'customer';
+    const staffToken = localStorage.getItem('token');
+    const user = apiService.getStoredUser();
+    if (staffToken && user?.role) return user.role;
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
 
-
+  // Keep `userRole` in sync with localStorage on every route change.
+  // The Google popup flow can cause React to remount the active route; re-reading
+  // the token here ensures the user is treated as authenticated as soon as
+  // the popup's `onSuccess` has written the customer token to localStorage.
   useEffect(() => {
     if (apiService.isCustomerAuthenticated()) {
-      setUserRole('customer');
-      setIsLoading(false);
+      setUserRole((current) => (current === 'customer' ? current : 'customer'));
       return;
     }
 
     const staffToken = localStorage.getItem('token');
     const user = apiService.getStoredUser();
     if (staffToken && user?.role) {
-      setUserRole(user.role);
+      setUserRole((current) => (current === user.role ? current : user.role));
+    } else if (!staffToken) {
+      setUserRole((current) => (current === null ? current : null));
     }
+  }, [location.pathname]);
 
-    setIsLoading(false);
-  }, []);
-
-  const handleLogin = (role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => {
+  const handleLogin = useCallback((role: 'admin' | 'cashier' | 'stock_manager' | 'customer') => {
     setUserRole(role);
-  };
+  }, []);
 
   const isEmployeeRole = userRole === 'admin' || userRole === 'cashier' || userRole === 'stock_manager';
 

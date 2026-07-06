@@ -3,12 +3,57 @@ const Activity = require('../models/Activity');
 const { addActivity } = require('../utils/activityTracker');
 const { validationResult } = require('express-validator');
 
+// How long a weekly deal lasts (7 days in milliseconds)
+const WEEKLY_DEAL_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Auto-remove expired weekly deals from the database.
+ * Returns the number of products removed.
+ */
+async function autoCleanupExpiredWeeklyDeals() {
+  try {
+    const expiryThreshold = new Date(Date.now() - WEEKLY_DEAL_DURATION_MS);
+    const result = await Product.updateMany(
+      {
+        weeklyDeals: true,
+        weeklyDealsAddedAt: { $ne: null, $lt: expiryThreshold },
+      },
+      {
+        $set: { weeklyDeals: false },
+        $unset: { weeklyDealsAddedAt: 1 },
+      }
+    );
+    return result.modifiedCount || 0;
+  } catch (err) {
+    console.error('[autoCleanupExpiredWeeklyDeals] error:', err.message);
+    return 0;
+  }
+}
+
+/**
+ * Returns the time left (in ms) for a product's weekly deal.
+ * Returns 0 if the product is not a weekly deal or has already expired.
+ */
+function getWeeklyDealTimeLeft(product) {
+  if (!product.weeklyDeals) return 0;
+  if (!product.weeklyDealsAddedAt) {
+    // If somehow weeklyDeals is true but no timestamp, give it a full 7 days
+    return WEEKLY_DEAL_DURATION_MS;
+  }
+  const elapsed = Date.now() - new Date(product.weeklyDealsAddedAt).getTime();
+  const remaining = WEEKLY_DEAL_DURATION_MS - elapsed;
+  return remaining > 0 ? remaining : 0;
+}
+
 // @desc    Get all products with filters
 // @route   GET /api/products
 // @access  Public
 exports.getProducts = async (req, res) => {
   try {
-    const { search, category, status, page = 1, limit = 50 } = req.query;
+    // First, auto-cleanup any expired weekly deals so we don't show stale ones
+    await autoCleanupExpiredWeeklyDeals();
+
+    const { search, category, status, page = 1, limit = 50, onlyWeekly } = req.query;
     const query = {};
 
     if (search) {
@@ -27,19 +72,64 @@ exports.getProducts = async (req, res) => {
       query.status = status;
     }
 
+    if (onlyWeekly === 'true') {
+      query.weeklyDeals = true;
+    }
+
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
+    // Attach a computed server time + time-left for each product
+    const serverNow = new Date().toISOString();
+    const data = products.map((p) => {
+      const obj = p.toObject();
+      obj.serverNow = serverNow;
+      obj.weeklyDealsTimeLeft = getWeeklyDealTimeLeft(p);
+      return obj;
+    });
+
     res.json({
       success: true,
-      count: products.length,
+      count: data.length,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / limit),
-      data: products,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get weekly deals (active, non-expired only) with time-left data
+// @route   GET /api/products/weekly-deals
+// @access  Public
+exports.getWeeklyDeals = async (req, res) => {
+  try {
+    await autoCleanupExpiredWeeklyDeals();
+
+    const expiryThreshold = new Date(Date.now() - WEEKLY_DEAL_DURATION_MS);
+    const weeklyDeals = await Product.find({
+      weeklyDeals: true,
+      weeklyDealsAddedAt: { $gte: expiryThreshold },
+    }).sort({ weeklyDealsAddedAt: -1 });
+
+    const serverNow = new Date().toISOString();
+    const data = weeklyDeals.map((p) => {
+      const obj = p.toObject();
+      obj.serverNow = serverNow;
+      obj.weeklyDealsTimeLeft = getWeeklyDealTimeLeft(p);
+      return obj;
+    });
+
+    res.json({
+      success: true,
+      count: data.length,
+      serverNow,
+      data,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -74,7 +164,10 @@ exports.getProductById = async (req, res) => {
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
-    res.json({ success: true, data: product });
+    const obj = product.toObject();
+    obj.serverNow = new Date().toISOString();
+    obj.weeklyDealsTimeLeft = getWeeklyDealTimeLeft(product);
+    res.json({ success: true, data: obj });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -129,7 +222,11 @@ exports.createProduct = async (req, res) => {
       product._id
     );
 
-    res.status(201).json({ success: true, data: product });
+    const obj = product.toObject();
+    obj.serverNow = new Date().toISOString();
+    obj.weeklyDealsTimeLeft = getWeeklyDealTimeLeft(product);
+
+    res.status(201).json({ success: true, data: obj });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -160,11 +257,13 @@ exports.updateProduct = async (req, res) => {
 
     // Handle weeklyDeals and timestamp
     if (weeklyDeals !== undefined) {
+      const wasActive = product.weeklyDeals;
       product.weeklyDeals = weeklyDeals;
-      if (weeklyDeals && !product.weeklyDealsAddedAt) {
-        // If weeklyDeals is being set to true and no timestamp exists, add one
+
+      if (weeklyDeals) {
+        // Reset the timer each time the product is (re-)selected as a weekly deal
         product.weeklyDealsAddedAt = new Date();
-      } else if (!weeklyDeals) {
+      } else {
         // If weeklyDeals is being set to false, clear the timestamp
         product.weeklyDealsAddedAt = null;
       }
@@ -183,7 +282,11 @@ exports.updateProduct = async (req, res) => {
       entityId: product._id
     });
 
-    res.json({ success: true, data: product });
+    const obj = product.toObject();
+    obj.serverNow = new Date().toISOString();
+    obj.weeklyDealsTimeLeft = getWeeklyDealTimeLeft(product);
+
+    res.json({ success: true, data: obj });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -201,7 +304,7 @@ exports.deleteProduct = async (req, res) => {
 
     const productName = product.name;
     await product.deleteOne();
-    
+
     // Log activity
     await Activity.create({
       action: 'product_deleted',
@@ -212,7 +315,7 @@ exports.deleteProduct = async (req, res) => {
       entityType: 'Product',
       entityId: product._id
     });
-    
+
     res.json({ success: true, message: 'Product deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -224,8 +327,7 @@ exports.deleteProduct = async (req, res) => {
 // @access  Private (all roles can trigger this)
 exports.cleanupWeeklyDeals = async (req, res) => {
   try {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgo = new Date(Date.now() - WEEKLY_DEAL_DURATION_MS);
 
     const expiredDeals = await Product.find({
       weeklyDeals: true,
@@ -238,16 +340,21 @@ exports.cleanupWeeklyDeals = async (req, res) => {
         weeklyDealsAddedAt: { $lt: sevenDaysAgo }
       },
       {
-        $unset: { weeklyDeals: 1, weeklyDealsAddedAt: 1 }
+        $set: { weeklyDeals: false },
+        $unset: { weeklyDealsAddedAt: 1 }
       }
     );
 
     res.json({
       success: true,
       message: `Cleaned up ${removedProducts.modifiedCount} expired weekly deals`,
-      removedProducts: expiredDeals.map(p => ({ id: p._id, name: p.name }))
+      removedProducts: expiredDeals.map(p => ({ id: p._id, name: p.name })),
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// Export helpers for use by the scheduled job
+exports.autoCleanupExpiredWeeklyDeals = autoCleanupExpiredWeeklyDeals;
+exports.WEEKLY_DEAL_DURATION_MS = WEEKLY_DEAL_DURATION_MS;

@@ -37,7 +37,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       if (staffResponse.success && staffResponse.data && staffResponse.data.token) {
         apiService.saveAuthData(staffResponse.data.token, staffResponse.data);
 
-        const role = staffResponse.data.role;
+        const role = staffResponse.data.role as 'admin' | 'cashier' | 'stock_manager' | 'customer';
         onLogin(role);
 
         navigate('/');

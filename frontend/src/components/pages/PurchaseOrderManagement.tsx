@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '../Layout/DashboardLayout';
-import { Search, Plus, Edit, Trash2, ShoppingCart, Calendar, DollarSign, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, ShoppingCart, Calendar, Package, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { apiService, PurchaseOrder } from '../../services/api';
 
 interface PurchaseOrderManagementProps {
-  userRole: 'admin' | 'cashier' | 'stock_manager' | null;
-  onLogout: () => void;
+  userRole?: 'admin' | 'cashier' | 'stock_manager' | null;
+  onLogout?: () => void;
+}
+
+interface POItem {
+  product: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
 }
 
 export default function PurchaseOrderManagement({ userRole, onLogout }: PurchaseOrderManagementProps) {
@@ -17,20 +24,20 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingOrder, setEditingOrder] = useState<PurchaseOrder | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [formData, setFormData] = useState({
     supplierId: '',
     orderDate: '',
     expectedDelivery: '',
-    status: 'pending' as 'pending' | 'confirmed' | 'delivered' | 'cancelled',
-    items: [] as Array<{ productId: string; name: string; quantity: number; price: number }>
+    status: 'pending' as 'pending' | 'approved' | 'received' | 'cancelled',
+    items: [] as POItem[]
   });
 
   const [newItem, setNewItem] = useState({
     productId: '',
     name: '',
     quantity: 1,
-    price: 0
+    unitCost: 0
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,13 +55,13 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
         apiService.getProducts()
       ]);
       if (poRes.success && poRes.data) {
-        setPurchaseOrders(poRes.data);
+        setPurchaseOrders(poRes.data as any);
       }
       if (supRes.success && supRes.data) {
-        setSuppliers(supRes.data);
+        setSuppliers(supRes.data as any);
       }
       if (prodRes.success && prodRes.data) {
-        setProducts(prodRes.data);
+        setProducts(prodRes.data as any);
       }
     } catch (error) {
       console.error('Error loading purchase order data:', error);
@@ -70,18 +77,18 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
       return;
     }
     setIsSubmitting(true);
-    
+
     try {
-      const orderData = {
-        supplierId: formData.supplierId,
+      const orderData: any = {
+        supplier: formData.supplierId,
         orderDate: formData.orderDate,
         expectedDelivery: formData.expectedDelivery,
         status: formData.status,
-        totalAmount: formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0),
-        items: formData.items.reduce((sum, item) => sum + item.quantity, 0),
+        totalAmount: formData.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0),
+        items: formData.items,
         notes: `PO containing ${formData.items.length} different product lines.`
       };
-      
+
       let response;
       if (editingOrder) {
         response = await apiService.updatePurchaseOrder(editingOrder._id, orderData);
@@ -98,7 +105,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
           alert('Failed to create purchase order: ' + response.message);
         }
       }
-      
+
       if (response.success) {
         setShowAddModal(false);
         setEditingOrder(null);
@@ -128,20 +135,20 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
 
   const handleProductSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const prodId = e.target.value;
-    const selectedProd = products.find(p => p._id === prodId);
+    const selectedProd = products.find((p: any) => p._id === prodId);
     if (selectedProd) {
       setNewItem({
         productId: prodId,
         name: selectedProd.name,
         quantity: 1,
-        price: selectedProd.price
+        unitCost: selectedProd.cost || selectedProd.price || 0
       });
     } else {
       setNewItem({
         productId: '',
         name: '',
         quantity: 1,
-        price: 0
+        unitCost: 0
       });
     }
   };
@@ -154,14 +161,18 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     }
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { ...newItem }]
+      items: [...prev.items, {
+        product: newItem.productId,
+        name: newItem.name,
+        quantity: newItem.quantity,
+        unitCost: newItem.unitCost
+      }]
     }));
-    // Reset selection input fields
     setNewItem({
       productId: '',
       name: '',
       quantity: 1,
-      price: 0
+      unitCost: 0
     });
   };
 
@@ -169,12 +180,18 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     setEditingOrder(order);
     const dateFormatted = order.orderDate ? new Date(order.orderDate).toISOString().split('T')[0] : '';
     const deliveryFormatted = order.expectedDelivery ? new Date(order.expectedDelivery).toISOString().split('T')[0] : '';
+    const supplierId = typeof order.supplier === 'string'
+      ? order.supplier
+      : (typeof order.supplierId === 'object' && order.supplierId !== null
+          ? (order.supplierId as any)._id
+          : (typeof order.supplierId === 'string' ? order.supplierId : ''));
+
     setFormData({
-      supplierId: order.supplierId?._id || order.supplierId || '',
+      supplierId: supplierId,
       orderDate: dateFormatted,
       expectedDelivery: deliveryFormatted,
-      status: order.status as any,
-      items: [] // In this high-level schema, items count is saved as a number, so we start with empty array on edits
+      status: (order.status as any) || 'pending',
+      items: Array.isArray(order.items) ? order.items as any : []
     });
     setShowAddModal(true);
   };
@@ -193,7 +210,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
       productId: '',
       name: '',
       quantity: 1,
-      price: 0
+      unitCost: 0
     });
   };
 
@@ -204,9 +221,20 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     }));
   };
 
+  const getSupplierName = (order: PurchaseOrder): string => {
+    if (typeof order.supplier === 'object' && order.supplier !== null) {
+      return (order.supplier as any).name || 'Unknown';
+    }
+    if (order.supplierId && typeof order.supplierId === 'object') {
+      return (order.supplierId as any).name || 'Unknown';
+    }
+    if (order.supplierName) return order.supplierName;
+    return 'Unknown';
+  };
+
   const filteredOrders = purchaseOrders.filter((order) => {
     const orderIdString = order._id.toLowerCase();
-    const supplierName = order.supplierId?.name?.toLowerCase() || '';
+    const supplierName = getSupplierName(order).toLowerCase();
     const query = searchQuery.toLowerCase();
     const matchesSearch = orderIdString.includes(query) || supplierName.includes(query);
     const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
@@ -232,9 +260,9 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
+      case 'approved':
         return 'bg-blue-100 text-blue-800';
-      case 'delivered':
+      case 'received':
         return 'bg-green-100 text-green-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
@@ -247,15 +275,22 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     switch (status) {
       case 'pending':
         return <Clock className="w-4 h-4" />;
-      case 'confirmed':
+      case 'approved':
         return <CheckCircle className="w-4 h-4" />;
-      case 'delivered':
+      case 'received':
         return <Package className="w-4 h-4" />;
       case 'cancelled':
         return <XCircle className="w-4 h-4" />;
       default:
         return <Clock className="w-4 h-4" />;
     }
+  };
+
+  const getItemsCount = (order: PurchaseOrder): number => {
+    if (Array.isArray(order.items)) {
+      return (order.items as any[]).reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+    }
+    return 0;
   };
 
   if (loading) {
@@ -297,12 +332,12 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
             <h2 className="text-yellow-700">{purchaseOrders.filter((o) => o.status === 'pending').length}</h2>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md">
-            <p className="text-gray-600">Confirmed</p>
-            <h2 className="text-blue-700">{purchaseOrders.filter((o) => o.status === 'confirmed').length}</h2>
+            <p className="text-gray-600">Approved</p>
+            <h2 className="text-blue-700">{purchaseOrders.filter((o) => o.status === 'approved').length}</h2>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md">
-            <p className="text-gray-600">Delivered</p>
-            <h2 className="text-green-700">{purchaseOrders.filter((o) => o.status === 'delivered').length}</h2>
+            <p className="text-gray-600">Received</p>
+            <h2 className="text-green-700">{purchaseOrders.filter((o) => o.status === 'received').length}</h2>
           </div>
         </div>
 
@@ -326,8 +361,8 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="delivered">Delivered</option>
+              <option value="approved">Approved</option>
+              <option value="received">Received</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
@@ -359,24 +394,24 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-800 font-semibold">
-                      {order.supplierId?.name || 'Unknown'}
+                      {getSupplierName(order)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar className="w-4 h-4" />
-                        <span>{new Date(order.orderDate).toLocaleDateString()}</span>
+                        <span>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-gray-600">
-                      {new Date(order.expectedDelivery).toLocaleDateString()}
+                      {order.expectedDelivery ? new Date(order.expectedDelivery).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 text-gray-600">
-                      {order.items}
+                      {getItemsCount(order)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1 text-gray-900 font-semibold">
                         <span>Rs. </span>
-                        <span>{order.totalAmount.toLocaleString()}</span>
+                        <span>{(order.totalAmount || 0).toLocaleString()}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -419,7 +454,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-gray-500 mb-1">Supplier</label>
-                    <select 
+                    <select
                       name="supplierId"
                       value={formData.supplierId}
                       onChange={handleInputChange}
@@ -427,22 +462,22 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                       required
                     >
                       <option value="">Select Supplier</option>
-                      {suppliers.map((sup) => (
+                      {suppliers.map((sup: any) => (
                         <option key={sup._id} value={sup._id}>{sup.name}</option>
                       ))}
                     </select>
                   </div>
                   <div className="flex flex-col">
                     <label className="text-xs font-semibold text-gray-500 mb-1">Status</label>
-                    <select 
+                    <select
                       name="status"
                       value={formData.status}
                       onChange={handleInputChange}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 font-bold"
                     >
                       <option value="pending">PENDING</option>
-                      <option value="confirmed">CONFIRMED</option>
-                      <option value="delivered">DELIVERED</option>
+                      <option value="approved">APPROVED</option>
+                      <option value="received">RECEIVED</option>
                       <option value="cancelled">CANCELLED</option>
                     </select>
                   </div>
@@ -469,21 +504,21 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                     />
                   </div>
                 </div>
-              
+
                 {/* Items Section */}
                 <div className="mt-6 border-t pt-4">
                   <h3 className="text-gray-800 mb-2 font-bold text-sm">Add Products to Order</h3>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
                     <div className="flex flex-col md:col-span-2">
                       <label className="text-xs text-gray-500 mb-1">Product</label>
-                      <select 
+                      <select
                         value={newItem.productId}
                         onChange={handleProductSelectChange}
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                       >
                         <option value="">Select Product</option>
-                        {products.map((p) => (
-                          <option key={p._id} value={p._id}>{p.name} (Rs. {p.price})</option>
+                        {products.map((p: any) => (
+                          <option key={p._id} value={p._id}>{p.name} (Rs. {p.cost || p.price})</option>
                         ))}
                       </select>
                     </div>
@@ -498,7 +533,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                       />
                     </div>
-                    <button 
+                    <button
                       type="button"
                       onClick={handleAddItemToPO}
                       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold transition-colors h-[38px]"
@@ -513,10 +548,10 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                       <div key={index} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border text-sm">
                         <div className="flex-1">
                           <p className="font-semibold text-gray-800">{item.name}</p>
-                          <p className="text-xs text-gray-500">Qty: {item.quantity} × Rs. {item.price}</p>
+                          <p className="text-xs text-gray-500">Qty: {item.quantity} × Rs. {item.unitCost}</p>
                         </div>
                         <div className="flex items-center gap-4">
-                          <span className="font-bold text-gray-700">Rs. {(item.quantity * item.price).toLocaleString()}</span>
+                          <span className="font-bold text-gray-700">Rs. {(item.quantity * item.unitCost).toLocaleString()}</span>
                           <button
                             type="button"
                             onClick={() => removeItemFromOrder(index)}
@@ -535,7 +570,7 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
                   {formData.items.length > 0 && (
                     <div className="flex justify-between font-bold text-gray-800 text-sm border-t pt-3 mt-3">
                       <span>Estimated Order Value:</span>
-                      <span className="text-green-700 text-base">Rs. {formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0).toLocaleString()}</span>
+                      <span className="text-green-700 text-base">Rs. {formData.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0).toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -564,4 +599,3 @@ export default function PurchaseOrderManagement({ userRole, onLogout }: Purchase
     </DashboardLayout>
   );
 }
-
