@@ -3,6 +3,7 @@ import { ShoppingCart, Search, User, MapPin, Phone, Mail, Facebook, Instagram, T
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import { TopBar } from '../ui/TopBar';
 
 const categories = [
   { name: 'Fruits & Vegetables', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?w=400&h=300&fit=crop' },
@@ -57,6 +58,44 @@ export default function HomePage() {
   const [memberDisplayName, setMemberDisplayName] = useState('Guest User');
   const [memberEmail, setMemberEmail] = useState('');
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // States & ref for scroll-responsive header behavior
+  const [showTopBar, setShowTopBar] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const lastScrollY = useRef(0);
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+// Top bar height constant. The bar slides up/down via translateY, so the
+// header's offsetHeight never changes — we model the *visible* height here.
+const TOP_BAR_HEIGHT = 40;
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    };
+    // Need a small timeout to ensure DOM is fully painted
+    setTimeout(updateHeight, 100);
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // Re-measure the header height whenever the green top bar collapses/expands,
+  // so the spacer always tracks the *visible* header height (not the
+  // pre-toggle snapshot taken on mount).
+  useEffect(() => {
+    if (headerRef.current) {
+      // Defer to the next frame so the new height is already applied.
+      const id = requestAnimationFrame(() => {
+        if (headerRef.current) {
+          setHeaderHeight(headerRef.current.offsetHeight);
+        }
+      });
+      return () => cancelAnimationFrame(id);
+    }
+  }, [showTopBar]);
 
   const [realProducts, setRealProducts] = useState<any[]>([]);
   const [weeklyDeals, setWeeklyDeals] = useState<any[]>([]);
@@ -135,6 +174,16 @@ export default function HomePage() {
   useEffect(() => {
     const id = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // Scroll tracking for header shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Recompute per-card countdown values every second. Time math uses the
@@ -306,29 +355,19 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Spacer to prevent content jump when header is fixed.
+          The visible header height changes by TOP_BAR_HEIGHT when the green
+      {/* Spacer to prevent content jump when header is fixed. */}
+      <div style={{ height: headerHeight > 0 ? `${headerHeight}px` : 'auto' }} />
+
       {/* Header */}
-      <header className="border-b sticky top-0 bg-white z-50">
-        {/* Top Bar */}
-        <div className="bg-green-700 text-white py-2">
-          <div className="container mx-auto px-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                +94 11 234 5678
-              </span>
-              <span className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                info@smartsupermarket.lk
-              </span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                Store Locator
-              </span>
-            </div>
-          </div>
-        </div>
+      <header
+        ref={headerRef}
+        className={`fixed top-0 w-full left-0 right-0 bg-white z-50 transition-all duration-300 ease-in-out ${
+          isScrolled ? 'shadow-md border-b-0' : 'border-b border-gray-100'
+        }`}
+      >
+        <TopBar />
 
         {/* Main Header */}
         <div className="container mx-auto px-4 py-4">
